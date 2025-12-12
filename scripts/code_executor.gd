@@ -95,7 +95,6 @@ func _parse_functions(code: String) -> String:
 			# Parse function body
 			var func_commands = []
 			i += 1
-			var func_start_line = i
 			
 			while i < lines.size():
 				var body_line = lines[i].strip_edges()

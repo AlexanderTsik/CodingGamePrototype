@@ -23,7 +23,7 @@ func _ready():
 
 func _on_code_completion_requested():
 	# Clear any existing options
-	code_input.clear_code_completion_options()
+	#code_input.clear_code_completion_options()
 	
 	# Add all available commands as completion options
 	for command in available_commands:
