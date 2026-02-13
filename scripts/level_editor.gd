@@ -32,8 +32,11 @@ func _ready():
 	
 	# Load grid manager
 	grid_manager = load("res://scripts/grid_manager.gd").new()
-	grid_manager.initialize(grid_size, grid_size)
 	add_child(grid_manager)
+	
+	# Create an initial empty layout string and load it
+	var empty_layout = _grid_to_string()
+	grid_manager.load_level_from_string(empty_layout)
 	
 	# Set up grid renderer
 	grid_renderer = grid_background
