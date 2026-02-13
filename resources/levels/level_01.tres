@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3 uid="uid://dmkemklj7uuhx"]
+
+[ext_resource type="Script" uid="uid://eeon5ar1bd1s" path="res://scripts/level_data.gd" id="1_fq8ci"]
+
+[resource]
+script = ExtResource("1_fq8ci")
+level_name = "First Steps"
+level_description = "Learn to move right to reach the goal"
+layout = "########
+#S.....#
+#......#
+#......#
+#.....G#
+########"
+starter_code = "# Move to the green goal!
+"
+hint_text = "Use moveRight() and moveDown() to reach the goal"

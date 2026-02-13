@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3 uid="uid://dp7qepps34bup"]
+
+[ext_resource type="Script" uid="uid://eeon5ar1bd1s" path="res://scripts/level_data.gd" id="1_5eu8s"]
+
+[resource]
+script = ExtResource("1_5eu8s")
+level_id = 5
+level_name = "Reuse Your Code"
+level_description = "Create functions to avoid repetition"
+difficulty = 2
+grid_width = 12
+grid_height = 8
+layout = "############
+#S.........#
+#..#..#..#.#
+#..#..#..#.#
+#..#..#..#.#
+#..#..#..#.#
+#.........G#
+############"
+starter_code = "# Define a function to move over an obstacle
+function stepOver() {
+	# Your code here
+}
+"
+hint_text = "Create a function that moves right, down, right, up and call it 3 times"

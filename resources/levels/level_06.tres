@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3 uid="uid://cshbad2iq6wa3"]
+
+[ext_resource type="Script" uid="uid://eeon5ar1bd1s" path="res://scripts/level_data.gd" id="1_i0woh"]
+
+[resource]
+script = ExtResource("1_i0woh")
+level_id = 6
+level_name = "Count Your Steps"
+level_description = "Use while loops for dynamic movement"
+difficulty = 3
+grid_width = 10
+grid_height = 10
+layout = "##########
+#S.......#
+#........#
+#........#
+#........#
+#........#
+#........#
+#........#
+#.......G#
+##########"
+starter_code = "# Use a while loop with a counter
+count = 0
+while (count < 7) {
+	# Your code here
+}
+"
+hint_text = "Move right 7 times and down 7 times using while loops"

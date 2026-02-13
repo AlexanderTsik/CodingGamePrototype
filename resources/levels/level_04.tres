@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3 uid="uid://ssyqnjrssgkb"]
+
+[ext_resource type="Script" uid="uid://eeon5ar1bd1s" path="res://scripts/level_data.gd" id="1_nds82"]
+
+[resource]
+script = ExtResource("1_nds82")
+level_id = 4
+level_name = "Make a Choice"
+level_description = "Use if statements to pick the right path"
+difficulty = 2
+grid_width = 10
+grid_height = 8
+layout = "##########
+#S.......#
+#..####..#
+#........#
+#........#
+#..####..#
+#.......G#
+##########"
+starter_code = "# Use variables and conditions
+x = 2
+if (x > 1) {
+	# Pick the right path
+}
+"
+hint_text = "Use an if statement to choose between going through the top or bottom opening"

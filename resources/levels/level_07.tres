@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3 uid="uid://bug8w2ueavfqk"]
+
+[ext_resource type="Script" uid="uid://eeon5ar1bd1s" path="res://scripts/level_data.gd" id="1_nyewv"]
+
+[resource]
+script = ExtResource("1_nyewv")
+level_id = 7
+level_name = "Double Loop"
+level_description = "Master nested loops"
+difficulty = 3
+grid_width = 10
+grid_height = 8
+layout = "##########
+#S.......#
+#.#.#.#.#.#
+#........#
+#.#.#.#.#.#
+#........#
+#.......G#
+##########"
+starter_code = "# Use nested loops to navigate
+for (i in range(3)) {
+	# Outer loop
+	for (j in range(2)) {
+		# Inner loop
+	}
+}
+"
+hint_text = "Use nested loops: outer loop for rows, inner for columns"

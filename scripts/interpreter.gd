@@ -1,0 +1,483 @@
+extends Node
+class_name Interpreter
+
+signal execution_complete
+signal execution_error(error_msg: String)
+signal line_executing(line_number: int)
+
+# Environment/Scope management
+var global_scope: Dictionary = {}
+var scope_stack: Array = []  # Stack of scopes for nested blocks/functions
+var current_player: Node2D
+
+# Function storage
+var user_functions: Dictionary = {}
+
+# Execution control
+var is_running: bool = false
+var max_iterations: int = 10000  # Prevent infinite loops
+var iteration_count: int = 0
+
+# Return value handling
+var return_value = null
+var should_return: bool = false
+
+func execute(ast: ASTNodes.ProgramNode, player: Node2D):
+	if is_running:
+		push_error("Interpreter is already running")
+		return
+	
+	current_player = player
+	global_scope = {}
+	scope_stack = []
+	user_functions = {}
+	is_running = true
+	iteration_count = 0
+	return_value = null
+	should_return = false
+	
+	_push_scope()  # Global scope
+	
+	# First pass: collect function definitions
+	for statement in ast.statements:
+		if statement is ASTNodes.FunctionNode:
+			user_functions[statement.function_name] = statement
+	
+	# Second pass: execute statements
+	for statement in ast.statements:
+		if statement is ASTNodes.FunctionNode:
+			continue  # Skip function definitions (already collected)
+		
+		await _execute_statement(statement)
+		
+		if should_return:
+			break
+		
+		if not is_running:
+			break
+	
+	_pop_scope()
+	is_running = false
+	execution_complete.emit()
+
+func stop():
+	is_running = false
+
+# ============================================
+# Statement Execution
+# ============================================
+
+func _execute_statement(statement):
+	if not is_running:
+		return
+	
+	iteration_count += 1
+	if iteration_count > max_iterations:
+		_error("Maximum iteration limit reached. Possible infinite loop?")
+		is_running = false
+		return
+	
+	if statement == null:
+		return
+	
+	if statement is ASTNodes.CallNode:
+		await _execute_function_call(statement)
+	
+	elif statement is ASTNodes.AssignmentNode:
+		_execute_assignment(statement)
+	
+	elif statement is ASTNodes.IfNode:
+		await _execute_if(statement)
+	
+	elif statement is ASTNodes.ForNode:
+		await _execute_for(statement)
+	
+	elif statement is ASTNodes.WhileNode:
+		await _execute_while(statement)
+	
+	elif statement is ASTNodes.DoWhileNode:
+		await _execute_do_while(statement)
+	
+	elif statement is ASTNodes.ReturnNode:
+		_execute_return(statement)
+	
+	elif statement is ASTNodes.FunctionNode:
+		# Function definitions are already collected
+		pass
+	
+	elif statement is ASTNodes.BlockNode:
+		await _execute_block(statement.statements)
+	
+	else:
+		_error("Unknown statement type: %s" % statement.node_type)
+
+func _execute_builtin_command(cmd_name: String, arguments: Array):
+	if not current_player:
+		_error("No player available for command execution")
+		return
+	
+	# Evaluate arguments (if any)
+	var args = []
+	for arg in arguments:
+		args.append(_evaluate_expression(arg))
+	
+	# Execute built-in commands
+	match cmd_name:
+		"moveRight":
+			current_player.move_right()
+			await get_tree().create_timer(0.3).timeout
+		"moveLeft":
+			current_player.move_left()
+			await get_tree().create_timer(0.3).timeout
+		"moveUp":
+			current_player.move_up()
+			await get_tree().create_timer(0.3).timeout
+		"moveDown":
+			current_player.move_down()
+			await get_tree().create_timer(0.3).timeout
+		_:
+			_error("Unknown built-in command: %s" % cmd_name)
+
+func _execute_function_call(call: ASTNodes.CallNode):
+	var func_name = call.function_name
+	
+	# Check if it's a built-in command first
+	if func_name in ["moveRight", "moveLeft", "moveUp", "moveDown"]:
+		await _execute_builtin_command(func_name, call.arguments)
+		return
+	
+	# Otherwise, call user-defined function
+	if not func_name in user_functions:
+		_error("Undefined function: %s" % func_name)
+		return
+	
+	var func_def = user_functions[func_name]
+	
+	# Evaluate arguments
+	var args = []
+	for arg in call.arguments:
+		args.append(_evaluate_expression(arg))
+	
+	# Check parameter count
+	if args.size() != func_def.parameters.size():
+		_error("Function %s expects %d arguments, got %d" % [func_name, func_def.parameters.size(), args.size()])
+		return
+	
+	# Create new scope for function
+	_push_scope()
+	
+	# Bind parameters
+	for i in range(func_def.parameters.size()):
+		_set_variable(func_def.parameters[i], args[i])
+	
+	# Execute function body
+	var previous_return_state = should_return
+	should_return = false
+	
+	for statement in func_def.body:
+		await _execute_statement(statement)
+		if should_return:
+			break
+	
+	should_return = previous_return_state
+	
+	_pop_scope()
+
+func _execute_assignment(assign: ASTNodes.AssignmentNode):
+	var value = _evaluate_expression(assign.value)
+	_set_variable(assign.variable_name, value)
+
+func _execute_if(if_node: ASTNodes.IfNode):
+	var condition = _evaluate_expression(if_node.condition)
+	
+	if _is_truthy(condition):
+		# Execute true branch
+		await _execute_block(if_node.true_branch)
+	else:
+		# Check elif branches
+		var executed = false
+		for elif_branch in if_node.elif_branches:
+			var elif_condition = _evaluate_expression(elif_branch.condition)
+			if _is_truthy(elif_condition):
+				await _execute_block(elif_branch.body)
+				executed = true
+				break
+		
+		# Execute else branch if no elif was executed
+		if not executed and if_node.false_branch.size() > 0:
+			await _execute_block(if_node.false_branch)
+
+func _execute_for(for_node: ASTNodes.ForNode):
+	# Evaluate iterable
+	var iterable = _evaluate_expression(for_node.iterable)
+	
+	if not iterable is Array:
+		_error("For loop iterable must be an array")
+		return
+	
+	_push_scope()
+	
+	for value in iterable:
+		_set_variable(for_node.iterator_var, value)
+		await _execute_block(for_node.body)
+		
+		if should_return or not is_running:
+			break
+	
+	_pop_scope()
+
+func _execute_while(while_node: ASTNodes.WhileNode):
+	_push_scope()
+	
+	var loop_count = 0
+	while _is_truthy(_evaluate_expression(while_node.condition)):
+		await _execute_block(while_node.body)
+		
+		if should_return or not is_running:
+			break
+		
+		loop_count += 1
+		if loop_count > max_iterations:
+			_error("While loop exceeded maximum iterations")
+			break
+	
+	_pop_scope()
+
+func _execute_do_while(do_while_node: ASTNodes.DoWhileNode):
+	_push_scope()
+	
+	var loop_count = 0
+	while true:
+		await _execute_block(do_while_node.body)
+		
+		if should_return or not is_running:
+			break
+		
+		if not _is_truthy(_evaluate_expression(do_while_node.condition)):
+			break
+		
+		loop_count += 1
+		if loop_count > max_iterations:
+			_error("Do-while loop exceeded maximum iterations")
+			break
+	
+	_pop_scope()
+
+func _execute_return(return_node: ASTNodes.ReturnNode):
+	if return_node.value:
+		return_value = _evaluate_expression(return_node.value)
+	else:
+		return_value = null
+	should_return = true
+
+func _execute_block(statements: Array):
+	for statement in statements:
+		await _execute_statement(statement)
+		if should_return or not is_running:
+			break
+
+# ============================================
+# Expression Evaluation
+# ============================================
+
+func _evaluate_expression(expr):
+	if expr == null:
+		return null
+	
+	if expr is ASTNodes.NumberNode:
+		return expr.value
+	
+	elif expr is ASTNodes.StringNode:
+		return expr.value
+	
+	elif expr is ASTNodes.IdentifierNode:
+		return _get_variable(expr.name)
+	
+	elif expr is ASTNodes.BinaryOpNode:
+		return _evaluate_binary_op(expr)
+	
+	elif expr is ASTNodes.UnaryOpNode:
+		return _evaluate_unary_op(expr)
+	
+	elif expr is ASTNodes.RangeNode:
+		return _evaluate_range(expr)
+	
+	elif expr is ASTNodes.CallNode:
+		# Note: This is synchronous function call for expressions
+		# For now, we don't support async function calls in expressions
+		_error("Function calls in expressions not yet supported")
+		return null
+	
+	else:
+		_error("Unknown expression type: %s" % expr.node_type)
+		return null
+
+func _evaluate_binary_op(op: ASTNodes.BinaryOpNode):
+	var left = _evaluate_expression(op.left)
+	var right = _evaluate_expression(op.right)
+	
+	match op.operator:
+		"+":
+			return left + right
+		"-":
+			return left - right
+		"*":
+			return left * right
+		"/":
+			if right == 0:
+				_error("Division by zero")
+				return 0
+			return left / right
+		"%":
+			if right == 0:
+				_error("Modulo by zero")
+				return 0
+			return left % right
+		"==":
+			return left == right
+		"!=":
+			return left != right
+		"<":
+			return left < right
+		">":
+			return left > right
+		"<=":
+			return left <= right
+		">=":
+			return left >= right
+		"and":
+			return _is_truthy(left) and _is_truthy(right)
+		"or":
+			return _is_truthy(left) or _is_truthy(right)
+		_:
+			_error("Unknown operator: %s" % op.operator)
+			return null
+
+func _evaluate_unary_op(op: ASTNodes.UnaryOpNode):
+	var operand = _evaluate_expression(op.operand)
+	
+	match op.operator:
+		"-":
+			return -operand
+		"not":
+			return not _is_truthy(operand)
+		_:
+			_error("Unknown unary operator: %s" % op.operator)
+			return null
+
+func _evaluate_range(range_node: ASTNodes.RangeNode) -> Array:
+	var start = _evaluate_expression(range_node.start)
+	var end = _evaluate_expression(range_node.end)
+	var step = 1
+	
+	if range_node.step:
+		step = _evaluate_expression(range_node.step)
+	
+	if not (start is int or start is float):
+		_error("Range start must be a number")
+		return []
+	
+	if not (end is int or end is float):
+		_error("Range end must be a number")
+		return []
+	
+	var result = []
+	if step > 0:
+		var i = start
+		while i < end:
+			result.append(i)
+			i += step
+	elif step < 0:
+		var i = start
+		while i > end:
+			result.append(i)
+			i += step
+	else:
+		_error("Range step cannot be zero")
+	
+	return result
+
+func _is_truthy(value) -> bool:
+	if value == null:
+		return false
+	if value is bool:
+		return value
+	if value is int or value is float:
+		return value != 0
+	if value is String:
+		return value != ""
+	if value is Array:
+		return value.size() > 0
+	return true
+
+# ============================================
+# Scope/Environment Management
+# ============================================
+
+func _push_scope():
+	scope_stack.append({})
+
+func _pop_scope():
+	if scope_stack.size() > 0:
+		scope_stack.pop_back()
+
+func _set_variable(name: String, value):
+	# Set in current scope
+	if scope_stack.size() > 0:
+		scope_stack[scope_stack.size() - 1][name] = value
+	else:
+		global_scope[name] = value
+
+func _get_variable(name: String):
+	# Search from innermost to outermost scope
+	for i in range(scope_stack.size() - 1, -1, -1):
+		if name in scope_stack[i]:
+			return scope_stack[i][name]
+	
+	# Check global scope
+	if name in global_scope:
+		return global_scope[name]
+	
+	_error("Undefined variable: %s" % name)
+	return null
+
+# ============================================
+# Error Handling
+# ============================================
+
+func _error(message: String):
+	# Try to provide helpful suggestions
+	var suggestion = _get_error_suggestion(message)
+	var full_message = "Runtime error: %s" % message
+	if suggestion != "":
+		full_message += "\nSuggestion: %s" % suggestion
+	
+	push_error(full_message)
+	execution_error.emit(full_message)
+	is_running = false
+
+func _get_error_suggestion(error_msg: String) -> String:
+	# Provide helpful suggestions based on error type
+	if "Undefined variable" in error_msg:
+		return "Did you forget to assign a value to this variable?"
+	elif "Undefined function" in error_msg:
+		var common_typos = {
+			"moveright": "moveRight",
+			"moveleft": "moveLeft",
+			"moveup": "moveUp",
+			"movedown": "moveDown"
+		}
+		for typo in common_typos:
+			if typo in error_msg.to_lower():
+				return "Did you mean '%s()'?" % common_typos[typo]
+		return "Make sure the function is defined before calling it."
+	elif "Division by zero" in error_msg or "Modulo by zero" in error_msg:
+		return "Check your math - you can't divide by zero!"
+	elif "Maximum iteration limit" in error_msg:
+		return "Your loop might be infinite. Check your loop conditions."
+	elif "must be a number" in error_msg:
+		return "Make sure you're using numbers in mathematical operations."
+	elif "must be an array" in error_msg:
+		return "For loops need an iterable like range(5)."
+	
+	return ""
