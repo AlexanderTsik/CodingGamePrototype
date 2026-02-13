@@ -33,6 +33,11 @@ func execute_code(code: String, player: Node2D):
 	# Execute
 	interpreter.execute(ast, player)
 
+func stop_execution():
+	"""Stop the current code execution"""
+	if interpreter:
+		interpreter.is_running = false
+
 func _on_execution_complete():
 	execution_complete.emit()
 

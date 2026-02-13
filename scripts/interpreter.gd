@@ -146,6 +146,12 @@ func _execute_function_call(call: ASTNodes.CallNode):
 		await _execute_builtin_command(func_name, call.arguments)
 		return
 	
+	# Check if it's a sensing function (returns a value)
+	if func_name in ["frontIsClear", "leftIsClear", "rightIsClear", "goalReached", "onHazard"]:
+		# These are handled in _evaluate_expression, not here
+		_error("Sensing function '%s' must be used in an expression (if/while condition)" % func_name)
+		return
+	
 	# Otherwise, call user-defined function
 	if not func_name in user_functions:
 		_error("Undefined function: %s" % func_name)
@@ -303,14 +309,39 @@ func _evaluate_expression(expr):
 		return _evaluate_range(expr)
 	
 	elif expr is ASTNodes.CallNode:
-		# Note: This is synchronous function call for expressions
-		# For now, we don't support async function calls in expressions
-		_error("Function calls in expressions not yet supported")
+		# Check if it's a sensing function (built-in query functions)
+		var func_name = expr.function_name
+		if func_name in ["frontIsClear", "leftIsClear", "rightIsClear", "goalReached", "onHazard"]:
+			return _evaluate_sensing_function(func_name)
+		
+		# For user-defined functions, we can't await here since this is sync
+		_error("Function calls in expressions not yet supported (except sensing functions)")
 		return null
 	
 	else:
 		_error("Unknown expression type: %s" % expr.node_type)
 		return null
+
+func _evaluate_sensing_function(func_name: String):
+	"""Evaluate built-in sensing functions that return boolean values"""
+	if not current_player:
+		_error("No player available for sensing function")
+		return false
+	
+	match func_name:
+		"frontIsClear":
+			return current_player.is_front_clear()
+		"leftIsClear":
+			return current_player.is_left_clear()
+		"rightIsClear":
+			return current_player.is_right_clear()
+		"goalReached":
+			return current_player.is_on_goal()
+		"onHazard":
+			return current_player.is_on_hazard()
+		_:
+			_error("Unknown sensing function: %s" % func_name)
+			return false
 
 func _evaluate_binary_op(op: ASTNodes.BinaryOpNode):
 	var left = _evaluate_expression(op.left)

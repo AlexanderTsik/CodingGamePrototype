@@ -31,7 +31,7 @@ offset_bottom = 648.0
 split_offset = 500
 
 [node name="CodePanel" type="PanelContainer" parent="HSplitContainer"]
-custom_minimum_size = Vector2(570, 0)
+custom_minimum_size = Vector2(570, 640)
 layout_mode = 2
 size_flags_horizontal = 3
 
@@ -40,12 +40,13 @@ layout_mode = 2
 
 [node name="TitleLabel" type="Label" parent="HSplitContainer/CodePanel/VBoxContainer"]
 layout_mode = 2
-text = "Code Editor"
+text = "Level 1: First Steps"
 horizontal_alignment = 1
 
 [node name="CodeInput" type="CodeEdit" parent="HSplitContainer/CodePanel/VBoxContainer"]
 custom_minimum_size = Vector2(400, 400)
 layout_mode = 2
+size_flags_vertical = 3
 syntax_highlighter = SubResource("CodeHighlighter_sugp2")
 highlight_all_occurrences = true
 highlight_current_line = true
@@ -60,33 +61,49 @@ code_completion_enabled = true
 indent_automatic = true
 auto_brace_completion_highlight_matching = true
 
-[node name="RunButton" type="Button" parent="HSplitContainer/CodePanel/VBoxContainer"]
+[node name="ButtonContainer" type="HBoxContainer" parent="HSplitContainer/CodePanel/VBoxContainer"]
 layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-text = "Run Code"
+alignment = 1
+
+[node name="RestartButton" type="Button" parent="HSplitContainer/CodePanel/VBoxContainer/ButtonContainer"]
+layout_mode = 2
+text = "Restart"
+
+[node name="RunButton" type="Button" parent="HSplitContainer/CodePanel/VBoxContainer/ButtonContainer"]
+layout_mode = 2
+text = "▶ Run Code"
+
+[node name="NextLevelButton" type="Button" parent="HSplitContainer/CodePanel/VBoxContainer/ButtonContainer"]
+layout_mode = 2
+text = "Next Level →"
+disabled = true
 
 [node name="OutputLabel" type="Label" parent="HSplitContainer/CodePanel/VBoxContainer"]
-custom_minimum_size = Vector2(100, 25)
+custom_minimum_size = Vector2(100, 50)
 layout_mode = 2
 text = "Ready !"
 horizontal_alignment = 1
 autowrap_mode = 2
 
 [node name="GamePanel" type="PanelContainer" parent="HSplitContainer"]
-custom_minimum_size = Vector2(570, 0)
+custom_minimum_size = Vector2(640, 640)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 
 [node name="GridBackground" type="Control" parent="HSplitContainer/GamePanel"]
+custom_minimum_size = Vector2(640, 640)
 layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
 script = ExtResource("6_grid")
 
 [node name="Level" type="Node2D" parent="HSplitContainer/GamePanel/GridBackground"]
 
 [node name="Player" parent="HSplitContainer/GamePanel/GridBackground/Level" instance=ExtResource("2_sugp2")]
 z_index = 5
-position = Vector2(99.505, 100)
+position = Vector2(96, 96)
+rotation = -6.2831855
 
 [node name="Sprite" type="Sprite2D" parent="HSplitContainer/GamePanel/GridBackground/Level/Player"]
 position = Vector2(-4.505005, -5)

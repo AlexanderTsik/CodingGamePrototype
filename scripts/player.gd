@@ -3,8 +3,10 @@ extends CharacterBody2D
 const GRID_SIZE = 64
 var start_position: Vector2
 var grid_position: Vector2i  # Current grid coordinates
+var current_direction: Vector2i = Vector2i(0, -1)  # Facing up by default
 
-@export var level_manager: LevelManager
+# Reference to grid manager
+@export var grid_manager: GridManager
 
 signal movement_started
 signal movement_completed
@@ -14,47 +16,110 @@ signal hit_hazard
 
 func _ready():
 	start_position = position
-	if level_manager:
-		grid_position = level_manager.world_to_grid(position)
+	grid_position = Vector2i(position / GRID_SIZE)
+	_update_facing_rotation()
 
 func reset_position():
-	if level_manager:
-		position = level_manager.get_start_world_position()
-		grid_position = level_manager.start_pos
+	if grid_manager:
+		position = grid_manager.get_start_world_position()
+		grid_position = grid_manager.start_position
 	else:
 		position = start_position
 		grid_position = Vector2i(position / GRID_SIZE)
+	current_direction = Vector2i(0, -1)  # Reset to face up
+	_update_facing_rotation()
 
 func move_right():
-	_attempt_move(Vector2i(1, 0))
+	current_direction = Vector2i(1, 0)
+	_update_facing_rotation()
+	_attempt_move(current_direction)
 
 func move_left():
-	_attempt_move(Vector2i(-1, 0))
+	current_direction = Vector2i(-1, 0)
+	_update_facing_rotation()
+	_attempt_move(current_direction)
 
 func move_up():
-	_attempt_move(Vector2i(0, -1))
+	current_direction = Vector2i(0, -1)
+	_update_facing_rotation()
+	_attempt_move(current_direction)
 
 func move_down():
-	_attempt_move(Vector2i(0, 1))
+	current_direction = Vector2i(0, 1)
+	_update_facing_rotation()
+	_attempt_move(current_direction)
+
+func _update_facing_rotation():
+	"""Rotate sprite to face current direction"""
+	# Get sprite node
+	var sprite = get_node_or_null("Sprite")
+	if not sprite:
+		sprite = get_node_or_null("Sprite2D")
+	if not sprite:
+		sprite = get_node_or_null("ColorRect")
+	
+	if sprite:
+		# Calculate rotation based on direction (sprite faces up at 0°)
+		if current_direction == Vector2i(0, -1):  # Up
+			sprite.rotation = 0
+		elif current_direction == Vector2i(1, 0):  # Right
+			sprite.rotation = PI/2
+		elif current_direction == Vector2i(0, 1):  # Down
+			sprite.rotation = PI
+		elif current_direction == Vector2i(-1, 0):  # Left
+			sprite.rotation = -PI/2
+
+# Environment checking functions
+func is_front_clear() -> bool:
+	if not grid_manager:
+		return true
+	var check_pos = grid_position + current_direction
+	var result = grid_manager.is_walkable(check_pos)
+	print("frontIsClear() - Facing: %v, Checking: %v, Result: %s" % [current_direction, check_pos, result])
+	return result
+
+func is_left_clear() -> bool:
+	if not grid_manager:
+		return true
+	var left_dir = Vector2i(-current_direction.y, current_direction.x)
+	var check_pos = grid_position + left_dir
+	return grid_manager.is_walkable(check_pos)
+
+func is_right_clear() -> bool:
+	if not grid_manager:
+		return true
+	var right_dir = Vector2i(current_direction.y, -current_direction.x)
+	var check_pos = grid_position + right_dir
+	return grid_manager.is_walkable(check_pos)
+
+func is_on_goal() -> bool:
+	if not grid_manager:
+		return false
+	return grid_manager.is_goal(grid_position)
+
+func is_on_hazard() -> bool:
+	if not grid_manager:
+		return false
+	return grid_manager.is_hazard(grid_position)
 
 func _attempt_move(direction: Vector2i):
-	"""Attempt to move in a direction with collision detection"""
+	"""Attempt to move in a direction with collision checking"""
 	var target_grid_pos = grid_position + direction
 	
-	# Check if we have a level manager
-	if not level_manager:
-		# Fallback to old behavior
+	if not grid_manager:
+		# Fallback to simple boundary checking
+		if target_grid_pos.x < 0 or target_grid_pos.x >= 8 or target_grid_pos.y < 0 or target_grid_pos.y >= 10:
+			hit_wall.emit()
+			print("Hit boundary!")
+			return
+		grid_position = target_grid_pos
 		_do_move(direction)
 		return
 	
-	# Check if target position is valid
-	if not level_manager.is_valid_position(target_grid_pos):
+	# Check if walkable
+	if not grid_manager.is_walkable(target_grid_pos):
 		hit_wall.emit()
-		return
-	
-	# Check if target is walkable
-	if not level_manager.is_walkable(target_grid_pos):
-		hit_wall.emit()
+		print("Hit wall at", target_grid_pos)
 		return
 	
 	# Move is valid, execute it
@@ -63,7 +128,7 @@ func _attempt_move(direction: Vector2i):
 	
 	# Check for hazards and goals after move completes
 	await _wait_for_tween()
-	level_manager.check_player_position(grid_position)
+	grid_manager.check_player_position(grid_position)
 
 func _do_move(direction: Vector2i):
 	"""Execute the actual movement animation"""
