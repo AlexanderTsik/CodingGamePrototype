@@ -3,7 +3,7 @@ extends Control
 @onready var code_input = $HSplitContainer/CodePanel/VBoxContainer/CodeInput
 @onready var run_button = $HSplitContainer/CodePanel/VBoxContainer/RunButton
 @onready var output_label = $HSplitContainer/CodePanel/VBoxContainer/OutputLabel
-@onready var player = $HSplitContainer/GamePanel/Level/Player
+@onready var player = $HSplitContainer/GamePanel/GridBackground/Level/Player
 @onready var code_executor = $CodeExecutor
 
 # Available commands and keywords for code completion
@@ -74,6 +74,11 @@ func _ready():
 	code_input.text = examples["simple_moves"]
 	
 	_update_help_text()
+	
+	# Wait for level manager to load, then reset player position
+	await get_tree().process_frame
+	if player and player.level_manager:
+		player.reset_position()
 
 func _on_code_completion_requested():
 	# Add all available commands as completion options

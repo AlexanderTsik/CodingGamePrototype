@@ -6,9 +6,10 @@
 script = ExtResource("1_3vyb7")
 
 [node name="ColorRect" type="ColorRect" parent="."]
+visible = false
 custom_minimum_size = Vector2(64, 64)
 offset_left = -32.0
 offset_top = -32.0
 offset_right = 32.0
 offset_bottom = 32.0
-color = Color(1, 1, 0.25882354, 1)
+color = Color(1, 1, 0.25882354, 0)
