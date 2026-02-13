@@ -99,9 +99,25 @@ func _ready():
 	
 	# Load selected level (from level select) or default to level 1
 	await get_tree().process_frame
-	var selected_level = get_tree().root.get_meta("selected_level", 1)
-	get_tree().root.remove_meta("selected_level")  # Clear after reading
-	load_level(selected_level)
+	
+	# Check for test level first (from level editor)
+	if get_tree().root.has_meta("test_level"):
+		var test_level = get_tree().root.get_meta("test_level")
+		get_tree().root.remove_meta("test_level")
+		_load_custom_level(test_level)
+	# Check for custom level
+	elif get_tree().root.has_meta("custom_level"):
+		var custom_level = get_tree().root.get_meta("custom_level")
+		get_tree().root.remove_meta("custom_level")
+		_load_custom_level(custom_level)
+	# Check for selected level from level select
+	elif get_tree().root.has_meta("selected_level"):
+		var selected_level = get_tree().root.get_meta("selected_level")
+		get_tree().root.remove_meta("selected_level")
+		load_level(selected_level)
+	else:
+		# Default to level 1
+		load_level(1)
 
 func load_level(level_id: int):
 	"""Load a level by ID"""
@@ -153,6 +169,52 @@ func load_level(level_id: int):
 	output_label.text = level_def["hint_text"]
 	
 	print("Loaded Level %d: %s" % [level_id, level_def["level_name"]])
+
+func _load_custom_level(level_def: Dictionary):
+	"""Load a custom level"""
+	current_level_id = level_def.get("level_id", 999)
+	
+	# Find or create GridManager
+	var level_node = get_node("HSplitContainer/GamePanel/GridBackground/Level")
+	grid_manager = level_node.get_node_or_null("GridManager")
+	
+	if not grid_manager:
+		grid_manager = GridManager.new()
+		grid_manager.name = "GridManager"
+		level_node.add_child(grid_manager)
+		# Connect signals
+		grid_manager.level_completed.connect(_on_level_completed)
+		grid_manager.player_died.connect(_on_player_died)
+	
+	grid_manager.load_level_from_string(level_def["layout"])
+	
+	# Connect grid manager to player
+	if player:
+		player.grid_manager = grid_manager
+		player.reset_position()
+	
+	# Explicitly set grid manager reference and refresh grid visual
+	var grid_bg = get_node("HSplitContainer/GamePanel/GridBackground")
+	if grid_bg:
+		grid_bg.grid_manager = grid_manager
+		if grid_bg.has_method("refresh"):
+			grid_bg.refresh()
+	
+	# Reset level state
+	is_level_complete = false
+	player_is_dead = false
+	next_level_button.disabled = true
+	
+	# Update code editor with starter code
+	code_input.text = level_def.get("starter_code", "")
+	
+	# Update title
+	title_label.text = level_def.get("level_name", "Custom Level")
+	
+	# Update output with hint
+	output_label.text = level_def.get("hint_text", "Complete your custom level!")
+	
+	print("Loaded Custom Level: %s" % level_def.get("level_name", "Untitled"))
 
 func _on_code_completion_requested():
 	# Add all available commands as completion options
