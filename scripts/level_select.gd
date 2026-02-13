@@ -25,7 +25,7 @@ func _create_level_buttons():
 		var button = Button.new()
 		button.custom_minimum_size = Vector2(200, 150)
 		button.text = "Level %d\n%s\n\n⭐" % [level_id, level_def["level_name"]]
-		button.theme_override_font_sizes/font_size = 16
+		button.add_theme_font_size_override("font_size", 16)
 		
 		# Color based on difficulty
 		var difficulty = level_def.get("difficulty", 1)
