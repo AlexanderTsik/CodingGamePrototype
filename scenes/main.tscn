@@ -24,6 +24,14 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_0wfyh")
 
+[node name="MenuButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 110.0
+offset_bottom = 41.0
+text = "← Menu"
+
 [node name="HSplitContainer" type="HSplitContainer" parent="."]
 layout_mode = 0
 offset_right = 1152.0

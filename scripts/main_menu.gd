@@ -1,28 +1,29 @@
 extends Control
 
-@onready var start_button = $MarginContainer/VBoxContainer/StartButton
-@ontml:parameter name="level_select_button = $MarginContainer/VBoxContainer/LevelSelectButton
-@onready var quit_button = $MarginContainer/VBoxContainer/QuitButton
-@onready var title_label = $MarginContainer/VBoxContainer/TitleLabel
-
 func _ready():
-	start_button.pressed.connect(_on_start_pressed)
-	level_select_button.pressed.connect(_on_level_select_pressed)
-	quit_button.pressed.connect(_on_quit_pressed)
-	
-	# Load progress on startup
-	if GameManager.instance:
-		GameManager.instance.load_progress()
+	# Connect buttons
+	$CenterContainer/VBoxContainer/StartButton.pressed.connect(_on_start_pressed)
+	$CenterContainer/VBoxContainer/LevelSelectButton.pressed.connect(_on_level_select_pressed)
+	$CenterContainer/VBoxContainer/HowToPlayButton.pressed.connect(_on_how_to_play_pressed)
+	$CenterContainer/VBoxContainer/QuitButton.pressed.connect(_on_quit_pressed)
+	$HowToPlayPopup/MarginContainer/VBoxContainer/CloseButton.pressed.connect(_on_close_popup_pressed)
 
 func _on_start_pressed():
-	# Start from level 1 or continue from last level
-	if GameManager.instance:
-		get_tree().change_scene_to_file("res://scenes/game_scene.tscn")
-	else:
-		push_error("GameManager not found!")
+	"""Start game from Level 1"""
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _on_level_select_pressed():
-	get_tree().change_scene_to_file("res://scenes/menus/level_select.tscn")
+	"""Open level select screen"""
+	get_tree().change_scene_to_file("res://scenes/level_select.tscn")
+
+func _on_how_to_play_pressed():
+	"""Show instructions popup"""
+	$HowToPlayPopup.visible = true
+
+func _on_close_popup_pressed():
+	"""Hide instructions popup"""
+	$HowToPlayPopup.visible = false
 
 func _on_quit_pressed():
+	"""Quit the game"""
 	get_tree().quit()

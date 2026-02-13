@@ -6,6 +6,7 @@ extends Control
 @onready var next_level_button = $HSplitContainer/CodePanel/VBoxContainer/ButtonContainer/NextLevelButton
 @onready var output_label = $HSplitContainer/CodePanel/VBoxContainer/OutputLabel
 @onready var title_label = $HSplitContainer/CodePanel/VBoxContainer/TitleLabel
+@onready var menu_button = $MenuButton
 @onready var player = $HSplitContainer/GamePanel/GridBackground/Level/Player
 @onready var code_executor = $CodeExecutor
 
@@ -79,6 +80,7 @@ func _ready():
 	run_button.pressed.connect(_on_run_button_pressed)
 	restart_button.pressed.connect(_on_restart_button_pressed)
 	next_level_button.pressed.connect(_on_next_level_button_pressed)
+	menu_button.pressed.connect(_on_menu_button_pressed)
 	code_executor.execution_complete.connect(_on_execution_complete)
 	code_executor.execution_error.connect(_on_execution_error)
 	
@@ -95,9 +97,11 @@ func _ready():
 	
 	_update_help_text()
 	
-	# Load level 1
+	# Load selected level (from level select) or default to level 1
 	await get_tree().process_frame
-	load_level(1)
+	var selected_level = get_tree().root.get_meta("selected_level", 1)
+	get_tree().root.remove_meta("selected_level")  # Clear after reading
+	load_level(selected_level)
 
 func load_level(level_id: int):
 	"""Load a level by ID"""
@@ -205,6 +209,10 @@ func _on_next_level_button_pressed():
 	else:
 		output_label.text = "🎉 Congratulations! You completed all levels!"
 		next_level_button.disabled = true
+
+func _on_menu_button_pressed():
+	"""Return to main menu"""
+	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 func _on_execution_error(error_msg: String):
 	output_label.text = "Error: " + error_msg
