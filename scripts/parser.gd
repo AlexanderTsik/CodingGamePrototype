@@ -65,7 +65,7 @@ func _parse_statement():
 			return null
 
 func _parse_if_statement() -> ASTNodes.IfNode:
-	_consume(TokenType.IF, "Expected 'if'")
+	var if_token = _consume(TokenType.IF, "Expected 'if'")
 	_consume(TokenType.LEFT_PAREN, "Expected '(' after 'if'")
 	
 	var condition = _parse_expression()
@@ -73,7 +73,7 @@ func _parse_if_statement() -> ASTNodes.IfNode:
 	_consume(TokenType.RIGHT_PAREN, "Expected ')' after condition")
 	_consume(TokenType.LEFT_BRACE, "Expected '{' after if condition")
 	
-	var if_node = ASTNodes.IfNode.new(condition)
+	var if_node = ASTNodes.IfNode.new(condition, if_token.line)
 	if_node.true_branch = _parse_block_body()
 	
 	_consume(TokenType.RIGHT_BRACE, "Expected '}' after if body")
@@ -104,7 +104,7 @@ func _parse_if_statement() -> ASTNodes.IfNode:
 	return if_node
 
 func _parse_for_loop() -> ASTNodes.ForNode:
-	_consume(TokenType.FOR, "Expected 'for'")
+	var for_token = _consume(TokenType.FOR, "Expected 'for'")
 	_consume(TokenType.LEFT_PAREN, "Expected '(' after 'for'")
 	
 	var iterator = _consume(TokenType.IDENTIFIER, "Expected iterator variable")
@@ -117,7 +117,7 @@ func _parse_for_loop() -> ASTNodes.ForNode:
 	_consume(TokenType.RIGHT_PAREN, "Expected ')' after for declaration")
 	_consume(TokenType.LEFT_BRACE, "Expected '{' after for declaration")
 	
-	var for_node = ASTNodes.ForNode.new(iterator_name, iterable)
+	var for_node = ASTNodes.ForNode.new(iterator_name, iterable, for_token.line)
 	for_node.body = _parse_block_body()
 	
 	_consume(TokenType.RIGHT_BRACE, "Expected '}' after for body")
@@ -125,7 +125,7 @@ func _parse_for_loop() -> ASTNodes.ForNode:
 	return for_node
 
 func _parse_while_loop() -> ASTNodes.WhileNode:
-	_consume(TokenType.WHILE, "Expected 'while'")
+	var while_token = _consume(TokenType.WHILE, "Expected 'while'")
 	_consume(TokenType.LEFT_PAREN, "Expected '(' after 'while'")
 	
 	var condition = _parse_expression()
@@ -133,7 +133,7 @@ func _parse_while_loop() -> ASTNodes.WhileNode:
 	_consume(TokenType.RIGHT_PAREN, "Expected ')' after while condition")
 	_consume(TokenType.LEFT_BRACE, "Expected '{' after while condition")
 	
-	var while_node = ASTNodes.WhileNode.new(condition)
+	var while_node = ASTNodes.WhileNode.new(condition, while_token.line)
 	while_node.body = _parse_block_body()
 	
 	_consume(TokenType.RIGHT_BRACE, "Expected '}' after while body")
@@ -141,10 +141,10 @@ func _parse_while_loop() -> ASTNodes.WhileNode:
 	return while_node
 
 func _parse_do_while_loop() -> ASTNodes.DoWhileNode:
-	_consume(TokenType.DO, "Expected 'do'")
+	var do_token = _consume(TokenType.DO, "Expected 'do'")
 	_consume(TokenType.LEFT_BRACE, "Expected '{' after 'do'")
 	
-	var do_while_node = ASTNodes.DoWhileNode.new(null)
+	var do_while_node = ASTNodes.DoWhileNode.new(null, do_token.line)
 	do_while_node.body = _parse_block_body()
 	
 	_consume(TokenType.RIGHT_BRACE, "Expected '}' after do body")
@@ -159,7 +159,7 @@ func _parse_do_while_loop() -> ASTNodes.DoWhileNode:
 	return do_while_node
 
 func _parse_function_definition() -> ASTNodes.FunctionNode:
-	_consume(TokenType.FUNCTION, "Expected 'function'")
+	var func_token = _consume(TokenType.FUNCTION, "Expected 'function'")
 	
 	var func_name_token = _consume(TokenType.IDENTIFIER, "Expected function name")
 	var func_name = func_name_token.value
@@ -175,7 +175,7 @@ func _parse_function_definition() -> ASTNodes.FunctionNode:
 	_consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters")
 	_consume(TokenType.LEFT_BRACE, "Expected '{' after function signature")
 	
-	var func_node = ASTNodes.FunctionNode.new(func_name)
+	var func_node = ASTNodes.FunctionNode.new(func_name, func_token.line)
 	func_node.parameters = params
 	func_node.body = _parse_block_body()
 	
@@ -187,14 +187,14 @@ func _parse_function_definition() -> ASTNodes.FunctionNode:
 	return func_node
 
 func _parse_return_statement() -> ASTNodes.ReturnNode:
-	_consume(TokenType.RETURN, "Expected 'return'")
+	var return_token = _consume(TokenType.RETURN, "Expected 'return'")
 	
 	# Check if there's a return value
 	if _check(TokenType.NEWLINE) or _check(TokenType.RIGHT_BRACE):
-		return ASTNodes.ReturnNode.new(null)
+		return ASTNodes.ReturnNode.new(null, return_token.line)
 	
 	var value = _parse_expression()
-	return ASTNodes.ReturnNode.new(value)
+	return ASTNodes.ReturnNode.new(value, return_token.line)
 
 func _parse_command() -> ASTNodes.CommandNode:
 	var cmd_token = _consume(TokenType.COMMAND, "Expected command")
@@ -226,7 +226,7 @@ func _parse_function_call() -> ASTNodes.CallNode:
 	
 	_consume(TokenType.RIGHT_PAREN, "Expected ')' after function arguments")
 	
-	return ASTNodes.CallNode.new(func_name, args)
+	return ASTNodes.CallNode.new(func_name, args, func_name_token.line)
 
 func _parse_assignment() -> ASTNodes.AssignmentNode:
 	var var_name_token = _consume(TokenType.IDENTIFIER, "Expected variable name")
@@ -236,7 +236,7 @@ func _parse_assignment() -> ASTNodes.AssignmentNode:
 	
 	var value = _parse_expression()
 	
-	return ASTNodes.AssignmentNode.new(var_name, value)
+	return ASTNodes.AssignmentNode.new(var_name, value, var_name_token.line)
 
 func _parse_block() -> ASTNodes.BlockNode:
 	_consume(TokenType.LEFT_BRACE, "Expected '{'")

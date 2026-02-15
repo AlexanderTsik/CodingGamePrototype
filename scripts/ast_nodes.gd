@@ -4,9 +4,11 @@ class_name ASTNodes
 # Base AST Node
 class ASTNode:
 	var node_type: String
+	var line_number: int = -1
 	
-	func _init(type: String):
+	func _init(type: String, line: int = -1):
 		node_type = type
+		line_number = line
 	
 	func _to_string() -> String:
 		return "ASTNode(%s)" % node_type
@@ -71,8 +73,8 @@ class AssignmentNode extends ASTNode:
 	var variable_name: String
 	var value  # Expression
 	
-	func _init(var_name: String, val):
-		super._init("Assignment")
+	func _init(var_name: String, val, line: int = -1):
+		super._init("Assignment", line)
 		variable_name = var_name
 		value = val
 	
@@ -87,8 +89,8 @@ class CommandNode extends ASTNode:
 	var command_name: String
 	var arguments: Array = []
 	
-	func _init(name: String, args: Array = []):
-		super._init("Command")
+	func _init(name: String, args: Array = [], line: int = -1):
+		super._init("Command", line)
 		command_name = name
 		arguments = args
 	
@@ -99,8 +101,8 @@ class CallNode extends ASTNode:
 	var function_name: String
 	var arguments: Array = []
 	
-	func _init(name: String, args: Array = []):
-		super._init("Call")
+	func _init(name: String, args: Array = [], line: int = -1):
+		super._init("Call", line)
 		function_name = name
 		arguments = args
 	
@@ -117,8 +119,8 @@ class IfNode extends ASTNode:
 	var elif_branches: Array = []  # Array of {condition, body}
 	var false_branch: Array = []
 	
-	func _init(cond):
-		super._init("If")
+	func _init(cond, line: int = -1):
+		super._init("If", line)
 		condition = cond
 	
 	func _to_string() -> String:
@@ -131,8 +133,8 @@ class ForNode extends ASTNode:
 	var iterable  # Expression (e.g., range call or array)
 	var body: Array = []
 	
-	func _init(var_name: String, iter):
-		super._init("For")
+	func _init(var_name: String, iter, line: int = -1):
+		super._init("For", line)
 		iterator_var = var_name
 		iterable = iter
 	
@@ -143,8 +145,8 @@ class WhileNode extends ASTNode:
 	var condition  # Expression
 	var body: Array = []
 	
-	func _init(cond):
-		super._init("While")
+	func _init(cond, line: int = -1):
+		super._init("While", line)
 		condition = cond
 	
 	func _to_string() -> String:
@@ -154,8 +156,8 @@ class DoWhileNode extends ASTNode:
 	var condition  # Expression
 	var body: Array = []
 	
-	func _init(cond):
-		super._init("DoWhile")
+	func _init(cond, line: int = -1):
+		super._init("DoWhile", line)
 		condition = cond
 	
 	func _to_string() -> String:
@@ -170,8 +172,8 @@ class FunctionNode extends ASTNode:
 	var parameters: Array = []
 	var body: Array = []
 	
-	func _init(name: String):
-		super._init("Function")
+	func _init(name: String, line: int = -1):
+		super._init("Function", line)
 		function_name = name
 	
 	func _to_string() -> String:
@@ -180,8 +182,8 @@ class FunctionNode extends ASTNode:
 class ReturnNode extends ASTNode:
 	var value  # Expression (can be null)
 	
-	func _init(val = null):
-		super._init("Return")
+	func _init(val = null, line: int = -1):
+		super._init("Return", line)
 		value = val
 	
 	func _to_string() -> String:

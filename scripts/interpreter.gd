@@ -4,6 +4,12 @@ class_name Interpreter
 signal execution_complete
 signal execution_error(error_msg: String)
 signal line_executing(line_number: int)
+signal line_executed(line_number: int, node_type: String)
+signal variable_changed(var_name: String, value)
+signal function_entered(func_name: String, params: Dictionary)
+signal function_exited(func_name: String, return_value)
+signal execution_paused
+signal execution_resumed
 
 # Environment/Scope management
 var global_scope: Dictionary = {}
@@ -80,11 +86,18 @@ func _execute_statement(statement):
 	if statement == null:
 		return
 	
+	# Emit line execution signal with line number and type
+	if statement.line_number > 0:
+		print("DEBUG [Interpreter]: Emitting line_executing for line %d" % statement.line_number)
+		line_executing.emit(statement.line_number)
+		# Increased delay to make execution visible
+		await get_tree().create_timer(0.3).timeout
+	
 	if statement is ASTNodes.CallNode:
 		await _execute_function_call(statement)
 	
 	elif statement is ASTNodes.AssignmentNode:
-		_execute_assignment(statement)
+		await _execute_assignment(statement)
 	
 	elif statement is ASTNodes.IfNode:
 		await _execute_if(statement)
@@ -99,7 +112,7 @@ func _execute_statement(statement):
 		await _execute_do_while(statement)
 	
 	elif statement is ASTNodes.ReturnNode:
-		_execute_return(statement)
+		await _execute_return(statement)
 	
 	elif statement is ASTNodes.FunctionNode:
 		# Function definitions are already collected
@@ -172,6 +185,14 @@ func _execute_function_call(call: ASTNodes.CallNode):
 	# Create new scope for function
 	_push_scope()
 	
+	# Build params dictionary for signal
+	var params_dict = {}
+	for i in range(func_def.parameters.size()):
+		params_dict[func_def.parameters[i]] = args[i]
+	
+	# Emit function entered signal
+	function_entered.emit(func_name, params_dict)
+	
 	# Bind parameters
 	for i in range(func_def.parameters.size()):
 		_set_variable(func_def.parameters[i], args[i])
@@ -187,11 +208,16 @@ func _execute_function_call(call: ASTNodes.CallNode):
 	
 	should_return = previous_return_state
 	
+	# Emit function exited signal
+	function_exited.emit(func_name, return_value)
+	
 	_pop_scope()
 
 func _execute_assignment(assign: ASTNodes.AssignmentNode):
 	var value = _evaluate_expression(assign.value)
 	_set_variable(assign.variable_name, value)
+	# Emit signal for variable change
+	variable_changed.emit(assign.variable_name, value)
 
 func _execute_if(if_node: ASTNodes.IfNode):
 	var condition = _evaluate_expression(if_node.condition)
