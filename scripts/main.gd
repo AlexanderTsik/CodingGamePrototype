@@ -10,6 +10,19 @@ extends Control
 @onready var player = $HSplitContainer/GamePanel/GridBackground/Level/Player
 @onready var code_executor = $CodeExecutor
 
+# Debug manager
+var debug_manager: DebugManager
+
+# Debug toolbar UI (created programmatically)
+var debug_toolbar: PanelContainer
+var pause_btn: Button
+var resume_btn: Button
+var step_over_btn: Button
+var step_into_btn: Button
+var step_out_btn: Button
+var speed_slider: HSlider
+var speed_label: Label
+
 # Variable viewer UI (created programmatically)
 var variables_panel: PanelContainer
 var variables_list: VBoxContainer
@@ -117,6 +130,12 @@ func _ready():
 		interpreter.function_entered.connect(_on_function_entered)
 		interpreter.function_exited.connect(_on_function_exited)
 		print("DEBUG: Interpreter signals connected!")
+		
+		# Create and attach debug manager
+		debug_manager = DebugManager.new()
+		add_child(debug_manager)
+		interpreter.set_debug_manager(debug_manager)
+		print("DEBUG: Debug manager created and attached!")
 	else:
 		print("ERROR: Interpreter not found in code_executor!")
 	
@@ -130,6 +149,9 @@ func _ready():
 	
 	# Setup line highlighting
 	_setup_execution_highlighting()
+	
+	# Setup debug toolbar UI
+	_setup_debug_toolbar()
 	
 	# Setup variable viewer UI
 	_setup_variable_viewer()
@@ -410,9 +432,63 @@ func _setup_execution_highlighting():
 	"""Setup syntax highlighting for execution feedback"""
 	# Enable line numbers (correct property for Godot 4.x)
 	code_input.gutters_draw_line_numbers = true
-	# Add custom gutter for visual feedback (will be used for breakpoints later)
+	
+	# Add custom gutter for breakpoints
+	code_input.add_gutter(0)  # Add gutter at index 0
+	code_input.set_gutter_name(0, "breakpoints")
 	code_input.set_gutter_draw(0, true)
-	code_input.set_gutter_width(0, 24)
+	code_input.set_gutter_clickable(0, true)
+	code_input.set_gutter_width(0, 20)
+	code_input.set_gutter_type(0, TextEdit.GUTTER_TYPE_ICON)
+	
+	# Connect gutter click signal
+	code_input.gutter_clicked.connect(_on_gutter_clicked)
+	
+	print("DEBUG: Execution highlighting and breakpoints enabled!")
+
+func _on_gutter_clicked(line: int, gutter: int):
+	"""Handle gutter clicks for breakpoint toggling"""
+	if gutter == 0:  # Breakpoint gutter
+		if debug_manager:
+			debug_manager.toggle_breakpoint(line + 1)  # +1 because lines are 1-indexed in our system
+			_update_breakpoint_display(line)
+			print("DEBUG: Breakpoint toggled at line %d" % (line + 1))
+
+func _update_breakpoint_display(line: int):
+	"""Update the visual display of a breakpoint"""
+	var actual_line = line + 1  # Convert to 1-indexed
+	if debug_manager and debug_manager.has_breakpoint(actual_line):
+		# Set breakpoint icon (red circle)
+		if debug_manager.is_breakpoint(actual_line):
+			code_input.set_line_gutter_metadata(line, 0, true)
+			code_input.set_line_gutter_icon(line, 0, _create_breakpoint_icon(true))
+		else:
+			# Disabled breakpoint (gray circle)
+			code_input.set_line_gutter_metadata(line, 0, false)
+			code_input.set_line_gutter_icon(line, 0, _create_breakpoint_icon(false))
+	else:
+		# Remove breakpoint icon
+		code_input.set_line_gutter_icon(line, 0, null)
+		code_input.set_line_gutter_metadata(line, 0, null)
+
+func _create_breakpoint_icon(enabled: bool) -> Texture2D:
+	"""Create a breakpoint icon texture"""
+	var img = Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))  # Transparent background
+	
+	# Draw a circle
+	var center = Vector2(8, 8)
+	var radius = 6
+	var color = Color.RED if enabled else Color(0.5, 0.5, 0.5)
+	
+	# Simple circle drawing
+	for x in range(16):
+		for y in range(16):
+			var dist = Vector2(x, y).distance_to(center)
+			if dist <= radius:
+				img.set_pixel(x, y, color)
+	
+	return ImageTexture.create_from_image(img)
 
 func _setup_variable_viewer():
 	"""Create and setup the variable viewer UI"""
@@ -581,6 +657,140 @@ func _setup_execution_log():
 	execution_log_toggle_btn.text = "Hide"
 	
 	print("DEBUG: Execution log UI created!")
+
+func _setup_debug_toolbar():
+	"""Create debug control toolbar programmatically"""
+	# Create main panel
+	debug_toolbar = PanelContainer.new()
+	debug_toolbar.name = "DebugToolbar"
+	var panel_stylebox = StyleBoxFlat.new()
+	panel_stylebox.bg_color = Color(0.15, 0.15, 0.2, 0.95)
+	panel_stylebox.border_width_left = 2
+	panel_stylebox.border_width_right = 2
+	panel_stylebox.border_width_top = 2
+	panel_stylebox.border_width_bottom = 2
+	panel_stylebox.border_color = Color(0.3, 0.6, 0.9, 1.0)
+	debug_toolbar.add_theme_stylebox_override("panel", panel_stylebox)
+	
+	# Create horizontal layout
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 8)
+	debug_toolbar.add_child(hbox)
+	
+	# Add label
+	var toolbar_label = Label.new()
+	toolbar_label.text = "Debug Controls:"
+	toolbar_label.add_theme_font_size_override("font_size", 14)
+	toolbar_label.add_theme_color_override("font_color", Color.CYAN)
+	hbox.add_child(toolbar_label)
+	
+	# Add separator
+	var sep1 = VSeparator.new()
+	hbox.add_child(sep1)
+	
+	# Pause button
+	pause_btn = Button.new()
+	pause_btn.text = "⏸ Pause"
+	pause_btn.custom_minimum_size = Vector2(80, 30)
+	pause_btn.pressed.connect(_on_pause_pressed)
+	hbox.add_child(pause_btn)
+	
+	# Resume button
+	resume_btn = Button.new()
+	resume_btn.text = "▶ Resume"
+	resume_btn.custom_minimum_size = Vector2(80, 30)
+	resume_btn.disabled = true
+	resume_btn.pressed.connect(_on_resume_pressed)
+	hbox.add_child(resume_btn)
+	
+	# Add separator
+	var sep2 = VSeparator.new()
+	hbox.add_child(sep2)
+	
+	# Step Over button
+	step_over_btn = Button.new()
+	step_over_btn.text = "⤵ Step Over"
+	step_over_btn.custom_minimum_size = Vector2(100, 30)
+	step_over_btn.pressed.connect(_on_step_over_pressed)
+	hbox.add_child(step_over_btn)
+	
+	# Step Into button
+	step_into_btn = Button.new()
+	step_into_btn.text = "↓ Step Into"
+	step_into_btn.custom_minimum_size = Vector2(100, 30)
+	step_into_btn.pressed.connect(_on_step_into_pressed)
+	hbox.add_child(step_into_btn)
+	
+	# Step Out button
+	step_out_btn = Button.new()
+	step_out_btn.text = "↑ Step Out"
+	step_out_btn.custom_minimum_size = Vector2(100, 30)
+	step_out_btn.pressed.connect(_on_step_out_pressed)
+	hbox.add_child(step_out_btn)
+	
+	# Add separator
+	var sep3 = VSeparator.new()
+	hbox.add_child(sep3)
+	
+	# Speed control label
+	speed_label = Label.new()
+	speed_label.text = "Speed: 1.0x"
+	speed_label.add_theme_font_size_override("font_size", 12)
+	hbox.add_child(speed_label)
+	
+	# Speed slider
+	speed_slider = HSlider.new()
+	speed_slider.min_value = 0.25
+	speed_slider.max_value = 5.0
+	speed_slider.step = 0.25
+	speed_slider.value = 1.0
+	speed_slider.custom_minimum_size = Vector2(150, 20)
+	speed_slider.value_changed.connect(_on_speed_changed)
+	hbox.add_child(speed_slider)
+	
+	# Speed preset buttons
+	var preset_container = HBoxContainer.new()
+	preset_container.add_theme_constant_override("separation", 4)
+	hbox.add_child(preset_container)
+	
+	var speed_025_btn = Button.new()
+	speed_025_btn.text = "0.25x"
+	speed_025_btn.custom_minimum_size = Vector2(50, 20)
+	speed_025_btn.pressed.connect(func(): _set_speed_preset(0.25))
+	preset_container.add_child(speed_025_btn)
+	
+	var speed_05_btn = Button.new()
+	speed_05_btn.text = "0.5x"
+	speed_05_btn.custom_minimum_size = Vector2(50, 20)
+	speed_05_btn.pressed.connect(func(): _set_speed_preset(0.5))
+	preset_container.add_child(speed_05_btn)
+	
+	var speed_1_btn = Button.new()
+	speed_1_btn.text = "1x"
+	speed_1_btn.custom_minimum_size = Vector2(40, 20)
+	speed_1_btn.pressed.connect(func(): _set_speed_preset(1.0))
+	preset_container.add_child(speed_1_btn)
+	
+	var speed_2_btn = Button.new()
+	speed_2_btn.text = "2x"
+	speed_2_btn.custom_minimum_size = Vector2(40, 20)
+	speed_2_btn.pressed.connect(func(): _set_speed_preset(2.0))
+	preset_container.add_child(speed_2_btn)
+	
+	var speed_5_btn = Button.new()
+	speed_5_btn.text = "5x"
+	speed_5_btn.custom_minimum_size = Vector2(40, 20)
+	speed_5_btn.pressed.connect(func(): _set_speed_preset(5.0))
+	preset_container.add_child(speed_5_btn)
+	
+	# Add toolbar to main UI (below the button container)
+	var code_panel = get_node("HSplitContainer/CodePanel/VBoxContainer")
+	var button_container = code_panel.get_node("ButtonContainer")
+	var button_idx = button_container.get_index()
+	code_panel.add_child(debug_toolbar)
+	code_panel.move_child(debug_toolbar, button_idx + 1)
+	
+	print("DEBUG: Debug toolbar created!")
 
 func _on_line_executing(line_number: int):
 	"""Called when a line is about to be executed"""
@@ -813,3 +1023,60 @@ func _print_node_tree(node: Node, depth: int):
 	print("  ".repeat(depth) + node.name + " (" + node.get_class() + ")")
 	for child in node.get_children():
 		_print_node_tree(child, depth + 1)
+
+# ============================================
+# Debug Control Functions
+# ============================================
+
+func _on_pause_pressed():
+	"""Handle pause button press"""
+	if debug_manager:
+		debug_manager.pause()
+		pause_btn.disabled = true
+		resume_btn.disabled = false
+		print("DEBUG: Pause button pressed")
+
+func _on_resume_pressed():
+	"""Handle resume button press"""
+	if debug_manager:
+		debug_manager.resume()
+		pause_btn.disabled = false
+		resume_btn.disabled = true
+		print("DEBUG: Resume button pressed")
+
+func _on_step_over_pressed():
+	"""Handle step over button press"""
+	if debug_manager:
+		debug_manager.step_over()
+		pause_btn.disabled = true
+		resume_btn.disabled = false
+		print("DEBUG: Step over button pressed")
+
+func _on_step_into_pressed():
+	"""Handle step into button press"""
+	if debug_manager:
+		debug_manager.step_into()
+		pause_btn.disabled = true
+		resume_btn.disabled = false
+		print("DEBUG: Step into button pressed")
+
+func _on_step_out_pressed():
+	"""Handle step out button press"""
+	if debug_manager:
+		debug_manager.step_out()
+		pause_btn.disabled = true
+		resume_btn.disabled = false
+		print("DEBUG: Step out button pressed")
+
+func _on_speed_changed(value: float):
+	"""Handle speed slider change"""
+	var interpreter = code_executor.interpreter
+	if interpreter:
+		interpreter.set_execution_speed(value)
+		speed_label.text = "Speed: %.2fx" % value
+		print("DEBUG: Speed changed to %.2fx" % value)
+
+func _set_speed_preset(speed: float):
+	"""Set speed to a preset value"""
+	speed_slider.value = speed
+	# _on_speed_changed will be called automatically

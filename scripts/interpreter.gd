@@ -23,10 +23,16 @@ var user_functions: Dictionary = {}
 var is_running: bool = false
 var max_iterations: int = 10000  # Prevent infinite loops
 var iteration_count: int = 0
+var execution_speed: float = 1.0  # Speed multiplier (1.0 = normal)
 
 # Return value handling
 var return_value = null
 var should_return: bool = false
+
+# Debug management
+var debug_manager: DebugManager = null
+var current_call_depth: int = 0
+const BASE_DELAY: float = 0.3
 
 func execute(ast: ASTNodes.ProgramNode, player: Node2D):
 	if is_running:
@@ -41,6 +47,7 @@ func execute(ast: ASTNodes.ProgramNode, player: Node2D):
 	iteration_count = 0
 	return_value = null
 	should_return = false
+	reset_debug_state()
 	
 	_push_scope()  # Global scope
 	
@@ -90,8 +97,20 @@ func _execute_statement(statement):
 	if statement.line_number > 0:
 		print("DEBUG [Interpreter]: Emitting line_executing for line %d" % statement.line_number)
 		line_executing.emit(statement.line_number)
-		# Increased delay to make execution visible
-		await get_tree().create_timer(0.3).timeout
+		
+		# Check if we should pause at this line
+		if debug_manager != null and debug_manager.should_pause_at_line(statement.line_number, current_call_depth):
+			execution_paused.emit()
+			print("DEBUG [Interpreter]: Paused at line %d" % statement.line_number)
+			
+			# Wait for continue signal or step signal
+			await debug_manager.continue_requested
+			execution_resumed.emit()
+			print("DEBUG [Interpreter]: Resumed from line %d" % statement.line_number)
+		
+		# Apply execution delay with speed multiplier
+		var delay = BASE_DELAY / execution_speed
+		await get_tree().create_timer(delay).timeout
 	
 	if statement is ASTNodes.CallNode:
 		await _execute_function_call(statement)
@@ -191,6 +210,7 @@ func _execute_function_call(call: ASTNodes.CallNode):
 		params_dict[func_def.parameters[i]] = args[i]
 	
 	# Emit function entered signal
+	current_call_depth += 1
 	function_entered.emit(func_name, params_dict)
 	
 	# Bind parameters
@@ -209,6 +229,7 @@ func _execute_function_call(call: ASTNodes.CallNode):
 	should_return = previous_return_state
 	
 	# Emit function exited signal
+	current_call_depth -= 1
 	function_exited.emit(func_name, return_value)
 	
 	_pop_scope()
@@ -497,6 +518,26 @@ func _get_variable(name: String):
 	
 	_error("Undefined variable: %s" % name)
 	return null
+
+# ============================================
+# Debug Control
+# ============================================
+
+func set_debug_manager(manager: DebugManager):
+	"""Attach a debug manager to control execution"""
+	debug_manager = manager
+	print("DEBUG [Interpreter]: Debug manager attached")
+
+func set_execution_speed(speed: float):
+	"""Set execution speed multiplier (0.25x to 5x)"""
+	execution_speed = clamp(speed, 0.25, 5.0)
+	print("DEBUG [Interpreter]: Execution speed set to %.2fx" % execution_speed)
+
+func reset_debug_state():
+	"""Reset debug state for new execution"""
+	current_call_depth = 0
+	if debug_manager != null:
+		debug_manager.reset()
 
 # ============================================
 # Error Handling
