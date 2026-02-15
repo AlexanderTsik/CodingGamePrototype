@@ -1224,7 +1224,6 @@ func _update_watches():
 	var interpreter = code_executor.interpreter
 	var variables = interpreter._get_current_variables() if interpreter.has_method("_get_current_variables") else {}
 	watch_manager.evaluate_watches(variables)
-		execution_log_toggle_btn.text = "Hide"
 
 func _print_node_tree(node: Node, depth: int):
 	"""Debug helper to print node hierarchy"""
