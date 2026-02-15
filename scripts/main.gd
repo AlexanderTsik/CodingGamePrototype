@@ -1225,12 +1225,6 @@ func _update_watches():
 	var variables = interpreter._get_current_variables() if interpreter.has_method("_get_current_variables") else {}
 	watch_manager.evaluate_watches(variables)
 
-func _print_node_tree(node: Node, depth: int):
-	"""Debug helper to print node hierarchy"""
-	print("  ".repeat(depth) + node.name + " (" + node.get_class() + ")")
-	for child in node.get_children():
-		_print_node_tree(child, depth + 1)
-
 # ============================================
 # Debug Control Functions
 # ============================================
