@@ -1,5 +1,8 @@
 extends Control
 
+# Preload required classes
+const DebugManager = preload("res://scripts/debug_manager.gd")
+
 @onready var code_input = $HSplitContainer/CodePanel/VBoxContainer/CodeInput
 @onready var run_button = $HSplitContainer/CodePanel/VBoxContainer/ButtonContainer/RunButton
 @onready var restart_button = $HSplitContainer/CodePanel/VBoxContainer/ButtonContainer/RestartButton
@@ -11,7 +14,7 @@ extends Control
 @onready var code_executor = $CodeExecutor
 
 # Debug manager
-var debug_manager: DebugManager
+var debug_manager
 
 # Debug toolbar UI (created programmatically)
 var debug_toolbar: PanelContainer
