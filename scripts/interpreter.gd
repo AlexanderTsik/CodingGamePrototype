@@ -99,7 +99,18 @@ func _execute_statement(statement):
 		line_executing.emit(statement.line_number)
 		
 		# Check if we should pause at this line
-		if debug_manager != null and debug_manager.should_pause_at_line(statement.line_number, current_call_depth):
+		var should_pause = false
+		
+		if debug_manager != null:
+			# First check conditional breakpoints
+			var current_vars = _get_current_variables()
+			if debug_manager.should_break_at(statement.line_number, current_vars):
+				should_pause = true
+			# Then check debug mode (step over/into/out)
+			elif debug_manager.should_pause_at_line(statement.line_number, current_call_depth):
+				should_pause = true
+		
+		if should_pause:
 			execution_paused.emit()
 			print("DEBUG [Interpreter]: Paused at line %d" % statement.line_number)
 			
@@ -538,6 +549,21 @@ func reset_debug_state():
 	current_call_depth = 0
 	if debug_manager != null:
 		debug_manager.reset()
+
+func _get_current_variables() -> Dictionary:
+	"""Get all currently accessible variables for breakpoint condition evaluation"""
+	var all_vars = {}
+	
+	# Add global scope variables
+	for key in global_scope.keys():
+		all_vars[key] = global_scope[key]
+	
+	# Add variables from current scope stack (local + function scopes)
+	for scope in scope_stack:
+		for key in scope.keys():
+			all_vars[key] = scope[key]
+	
+	return all_vars
 
 # ============================================
 # Error Handling

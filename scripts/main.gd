@@ -2,6 +2,7 @@ extends Control
 
 # Preload required classes
 const DebugManager = preload("res://scripts/debug_manager.gd")
+const WatchManager = preload("res://scripts/watch_manager.gd")
 
 @onready var code_input = $HSplitContainer/CodePanel/VBoxContainer/CodeInput
 @onready var run_button = $HSplitContainer/CodePanel/VBoxContainer/ButtonContainer/RunButton
@@ -15,6 +16,7 @@ const DebugManager = preload("res://scripts/debug_manager.gd")
 
 # Debug manager
 var debug_manager
+var watch_manager
 
 # Debug toolbar UI (created programmatically)
 var debug_toolbar: PanelContainer
@@ -32,6 +34,15 @@ var variables_list: VBoxContainer
 var variables_scroll: ScrollContainer
 var variables_toggle_btn: Button
 var variable_labels: Dictionary = {}
+
+# Watch expressions UI (created programmatically)
+var watch_panel: PanelContainer
+var watch_list: VBoxContainer
+var watch_scroll: ScrollContainer
+var watch_toggle_btn: Button
+var watch_input: LineEdit
+var watch_add_btn: Button
+var watch_labels: Dictionary = {}
 
 # Call stack UI (created programmatically)
 var callstack_panel: PanelContainer
@@ -139,6 +150,12 @@ func _ready():
 		add_child(debug_manager)
 		interpreter.set_debug_manager(debug_manager)
 		print("DEBUG: Debug manager created and attached!")
+		
+		# Create and attach watch manager
+		watch_manager = WatchManager.new()
+		add_child(watch_manager)
+		watch_manager.watch_updated.connect(_on_watch_updated)
+		print("DEBUG: Watch manager created and attached!")
 	else:
 		print("ERROR: Interpreter not found in code_executor!")
 	
@@ -158,6 +175,9 @@ func _ready():
 	
 	# Setup variable viewer UI
 	_setup_variable_viewer()
+	
+	# Setup watch expressions UI
+	_setup_watch_viewer()
 	
 	# Setup call stack UI
 	_setup_callstack_viewer()
@@ -546,6 +566,80 @@ func _setup_variable_viewer():
 	
 	print("DEBUG: Variable viewer UI created!")
 
+func _setup_watch_viewer():
+	"""Create and setup the watch expressions viewer UI"""
+	# Create main panel container
+	watch_panel = PanelContainer.new()
+	watch_panel.name = "WatchPanel"
+	
+	# Create VBoxContainer for layout
+	var vbox = VBoxContainer.new()
+	watch_panel.add_child(vbox)
+	
+	# Add title bar with toggle button
+	var title_bar = HBoxContainer.new()
+	vbox.add_child(title_bar)
+	
+	var title = Label.new()
+	title.text = "Watch Expressions"
+	title.add_theme_font_size_override("font_size", 16)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_bar.add_child(title)
+	
+	watch_toggle_btn = Button.new()
+	watch_toggle_btn.text = "Hide"
+	watch_toggle_btn.custom_minimum_size = Vector2(60, 0)
+	watch_toggle_btn.pressed.connect(_on_watch_toggle)
+	title_bar.add_child(watch_toggle_btn)
+	
+	# Add separator
+	var separator1 = HSeparator.new()
+	vbox.add_child(separator1)
+	
+	# Add input box for adding watches
+	var input_container = HBoxContainer.new()
+	input_container.add_theme_constant_override("separation", 5)
+	vbox.add_child(input_container)
+	
+	watch_input = LineEdit.new()
+	watch_input.placeholder_text = "Enter expression..."
+	watch_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	watch_input.text_submitted.connect(_on_watch_add_submitted)
+	input_container.add_child(watch_input)
+	
+	watch_add_btn = Button.new()
+	watch_add_btn.text = "Add"
+	watch_add_btn.custom_minimum_size = Vector2(50, 0)
+	watch_add_btn.pressed.connect(_on_watch_add_pressed)
+	input_container.add_child(watch_add_btn)
+	
+	# Add separator
+	var separator2 = HSeparator.new()
+	vbox.add_child(separator2)
+	
+	# Create scroll container for watches
+	watch_scroll = ScrollContainer.new()
+	watch_scroll.name = "WatchScroll"
+	watch_scroll.custom_minimum_size = Vector2(200, 120)
+	watch_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vbox.add_child(watch_scroll)
+	
+	# Create VBoxContainer to hold watch labels
+	watch_list = VBoxContainer.new()
+	watch_list.name = "WatchList"
+	watch_scroll.add_child(watch_list)
+	
+	# Position the panel below the variables panel
+	var code_panel = get_node("HSplitContainer/CodePanel/VBoxContainer")
+	code_panel.add_child(watch_panel)
+	
+	# Show panel and content by default
+	watch_panel.visible = true
+	watch_scroll.visible = true
+	
+	print("DEBUG: Watch viewer UI created!")
+
 func _setup_callstack_viewer():
 	"""Create and setup the call stack viewer UI"""
 	# Create main panel container
@@ -850,6 +944,9 @@ func _on_variable_changed(var_name: String, value):
 	# Highlight changed variable briefly
 	label.add_theme_color_override("font_color", Color.YELLOW)
 	
+	# Update watch expressions
+	_update_watches()
+	
 	# Reset color after a short delay
 	await get_tree().create_timer(0.5).timeout
 	if label and is_instance_valid(label):
@@ -1019,6 +1116,114 @@ func _on_execution_log_toggle():
 		execution_log_toggle_btn.text = "Show"
 	else:
 		execution_log_scroll.visible = true
+		execution_log_toggle_btn.text = "Hide"
+
+func _on_watch_toggle():
+	"""Toggle watch expressions panel visibility"""
+	if not watch_scroll or not watch_toggle_btn:
+		return
+	
+	if watch_scroll.visible:
+		watch_scroll.visible = false
+		watch_toggle_btn.text = "Show"
+	else:
+		watch_scroll.visible = true
+		watch_toggle_btn.text = "Hide"
+
+func _print_node_tree(node: Node, depth: int):
+	"""Debug helper to print node hierarchy"""
+	print("  ".repeat(depth) + node.name + " (" + node.get_class() + ")")
+	for child in node.get_children():
+		_print_node_tree(child, depth + 1)
+
+# ============================================
+# Watch Expression Functions
+# ============================================
+
+func _on_watch_add_pressed():
+	"""Handle watch add button press"""
+	if watch_input and watch_input.text.strip_edges() != "":
+		_add_watch_expression(watch_input.text.strip_edges())
+		watch_input.text = ""
+
+func _on_watch_add_submitted(expression: String):
+	"""Handle watch expression submitted via Enter key"""
+	if expression.strip_edges() != "":
+		_add_watch_expression(expression.strip_edges())
+		watch_input.text = ""
+
+func _add_watch_expression(expression: String):
+	"""Add a new watch expression"""
+	if watch_manager:
+		watch_manager.add_watch(expression)
+		_create_watch_label(expression)
+		print("DEBUG: Added watch expression: %s" % expression)
+
+func _create_watch_label(expression: String):
+	"""Create a label for a watch expression"""
+	if not watch_list:
+		return
+	
+	# Create container for watch (expression + remove button)
+	var container = HBoxContainer.new()
+	container.name = "Watch_" + expression.replace(" ", "_")
+	container.add_theme_constant_override("separation", 5)
+	
+	# Create label
+	var label = Label.new()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	label.add_theme_font_size_override("font_size", 12)
+	label.text = "%s = ?" % expression
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	container.add_child(label)
+	
+	# Create remove button
+	var remove_btn = Button.new()
+	remove_btn.text = "X"
+	remove_btn.custom_minimum_size = Vector2(25, 0)
+	remove_btn.pressed.connect(func(): _remove_watch_expression(expression))
+	container.add_child(remove_btn)
+	
+	watch_list.add_child(container)
+	watch_labels[expression] = label
+	
+	print("DEBUG: Created watch label for: %s" % expression)
+
+func _remove_watch_expression(expression: String):
+	"""Remove a watch expression"""
+	if watch_manager:
+		watch_manager.remove_watch(expression)
+	
+	# Remove UI element
+	if watch_labels.has(expression):
+		var label = watch_labels[expression]
+		var container = label.get_parent()
+		if container:
+			container.queue_free()
+		watch_labels.erase(expression)
+		print("DEBUG: Removed watch expression: %s" % expression)
+
+func _on_watch_updated(expression: String, value, error: String):
+	"""Called when a watch expression is evaluated"""
+	if not watch_labels.has(expression):
+		return
+	
+	var label = watch_labels[expression]
+	if error != "":
+		label.text = "%s = ERROR: %s" % [expression, error]
+		label.add_theme_color_override("font_color", Color.RED)
+	else:
+		label.text = "%s = %s" % [expression, str(value)]
+		label.add_theme_color_override("font_color", Color.CYAN)
+
+func _update_watches():
+	"""Update all watch expressions with current variable state"""
+	if not watch_manager or not code_executor or not code_executor.interpreter:
+		return
+	
+	var interpreter = code_executor.interpreter
+	var variables = interpreter._get_current_variables() if interpreter.has_method("_get_current_variables") else {}
+	watch_manager.evaluate_watches(variables)
 		execution_log_toggle_btn.text = "Hide"
 
 func _print_node_tree(node: Node, depth: int):
