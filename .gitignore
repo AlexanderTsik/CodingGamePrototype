@@ -1,17 +1,226 @@
-# Godot 4+ specific ignores
+# ========================================
+# Godot 4+ Project - LediBug
+# ========================================
+
+# -------------------
+# Godot Engine Files
+# -------------------
+# Godot 4+ specific cache and build files
 .godot/
+.import/
+*.import
+
+# Godot-specific binaries and executables
+*.translation
+*.import
+
+# Android build files
 /android/
+android/build/
+android/app/build/
+.gradle/
 
-# Export artifacts
+# iOS build files (if you add iOS export later)
+/ios/
+/project.xcworkspace/
+/project.xcodeproj/
+
+# Mono / C# (if using C# with Godot)
+.mono/
+data_*/
+mono_crash.*.json
+
+# -------------------
+# Export Artifacts
+# -------------------
+# All export builds and artifacts
 exports/
+*.exe
+*.pck
+*.zip
+*.apk
+*.aab
+*.ipa
+*.dmg
+*.app/
 
+# Export presets (comment out if you want to share export settings)
+# export_presets.cfg
 
-# Backend build artifacts
+# -------------------
+# .NET Backend
+# -------------------
+# .NET build outputs
 backend/**/bin/
 backend/**/obj/
+backend/**/.vs/
+backend/**/packages/
+
+# .NET user-specific files
 *.user
+*.suo
+*.userprefs
+*.sln.docstates
+*.csproj.user
 
+# NuGet packages (restore on build)
+backend/**/packages/
+*.nupkg
+*.snupkg
 
-# User-generated content
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# -------------------
+# User Generated Content
+# -------------------
+# Custom levels created by users
 resources/custom_levels/*.json
+resources/user_data/
+
+# User preferences and save files
+*.save
+*.dat
+user://
+
+# -------------------
+# Development Tools
+# -------------------
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# JetBrains IDEs (Rider, IntelliJ, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# -------------------
+# Operating System
+# -------------------
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# -------------------
+# Logs and Databases
+# -------------------
+# Log files
+*.log
+logs/
+*.log.*
+
+# Database files (local development only)
+*.db
+*.sqlite
+*.sqlite3
+
+# -------------------
+# Temporary Files
+# -------------------
+# Temporary and cache files
+*.tmp
+*.temp
+*.cache
+*.bak
+*.old
+
+# Node modules (if you add any web tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if you add any Python tools/scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# -------------------
+# Secrets & Credentials
+# -------------------
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+credentials/
+
+# API keys and configuration
+config.local.json
+appsettings.local.json
+appsettings.*.local.json
+
+# -------------------
+# Documentation Build
+# -------------------
+# Generated documentation
+docs/_build/
+docs/.doctrees/
+site/
+
+# -------------------
+# Misc
+# -------------------
+# Backup files
+*.backup
+*_backup
+
+# Test artifacts
+test-results/
+coverage/
+*.cover
+
+# Diagnostic and test files created by tools
+test_scene_minimal.gd
+test_scene_minimal.tscn
+*.test.gd
+*.test.tscn
 
