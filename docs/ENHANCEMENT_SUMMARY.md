@@ -100,42 +100,42 @@ result = x * y
 **If/Elif/Else:**
 ```javascript
 if (x > 5) {
-    moveRight()
+	moveRight()
 } elif (x == 5) {
-    moveUp()
+	moveUp()
 } else {
-    moveDown()
+	moveDown()
 }
 ```
 
 **For Loops:**
 ```javascript
 for (i in range(10)) {
-    moveRight()
+	moveRight()
 }
 ```
 
 **While Loops:**
 ```javascript
 while (x < 10) {
-    moveUp()
-    x = x + 1
+	moveUp()
+	x = x + 1
 }
 ```
 
 **Do-While Loops:**
 ```javascript
 do {
-    moveDown()
+	moveDown()
 } while (x > 0)
 ```
 
 ### 4. Functions with Parameters
 ```javascript
 function repeat(times) {
-    for (i in range(times)) {
-        moveRight()
-    }
+	for (i in range(times)) {
+		moveRight()
+	}
 }
 
 repeat(5)
@@ -144,7 +144,7 @@ repeat(5)
 ### 5. Return Statements
 ```javascript
 function add(a, b) {
-    return a + b
+	return a + b
 }
 
 result = add(3, 7)
@@ -159,11 +159,11 @@ moveRight()  // C-style comment
 ### 7. Nested Structures
 ```javascript
 for (i in range(3)) {
-    if (i == 1) {
-        for (j in range(2)) {
-            moveRight()
-        }
-    }
+	if (i == 1) {
+		for (j in range(2)) {
+			moveRight()
+		}
+	}
 }
 ```
 
@@ -177,9 +177,9 @@ Code → Simple Parser → Flat Command Array → Sequential Execution
 ### New Architecture
 ```
 Code → Lexer (Tokenization)
-     → Parser (AST Generation)
-     → Interpreter (Async Execution with Scoping)
-     → Player Movement
+	 → Parser (AST Generation)
+	 → Interpreter (Async Execution with Scoping)
+	 → Player Movement
 ```
 
 ## Technical Improvements
@@ -215,8 +215,8 @@ LediBug_Project/
 │   ├── LANGUAGE_REFERENCE.md
 │   └── ENHANCEMENT_SUMMARY.md (this file)
 └── scenes/
-    ├── main.tscn
-    └── player.tscn
+	├── main.tscn
+	└── player.tscn
 ```
 
 ## Testing

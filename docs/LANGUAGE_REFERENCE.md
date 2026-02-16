@@ -360,30 +360,30 @@ navigateToGoal()
 ### Pattern: Navigate Until Goal
 ```javascript
 while (!goalReached()) {
-    // Your navigation logic
-    if (frontIsClear()) {
-        move()
-    }
+	// Your navigation logic
+	if (frontIsClear()) {
+		move()
+	}
 }
 ```
 
 ### Pattern: Safe Movement Check
 ```javascript
 if (frontIsClear() and !onHazard()) {
-    move()
+	move()
 } else {
-    turnRight()
+	turnRight()
 }
 ```
 
 ### Pattern: Explore All Directions
 ```javascript
 for (i in range(4)) {
-    if (frontIsClear()) {
-        move()
-        break
-    }
-    turnRight()
+	if (frontIsClear()) {
+		move()
+		break
+	}
+	turnRight()
 }
 ```
 

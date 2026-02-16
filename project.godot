@@ -18,3 +18,7 @@ config/icon="res://assets/icons/icon.svg"
 [autoload]
 
 GameManager="*res://scripts/game_manager.gd"
+
+[gui]
+
+theme/custom="res://assets/default_theme.tres"

@@ -1,0 +1,11 @@
+HTTP/1.1 200 OK
+Content-Length: 5769
+Content-Type: image/png
+Date: Mon, 16 Feb 2026 22:24:30 GMT
+Server: Kestrel
+Accept-Ranges: bytes
+ETag: "1dc9f8a9ea20b09"
+Last-Modified: Mon, 16 Feb 2026 21:24:23 GMT
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+
