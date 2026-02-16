@@ -1,3 +1,17 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Export artifacts
+exports/
+
+
+# Backend build artifacts
+backend/**/bin/
+backend/**/obj/
+*.user
+
+
+# User-generated content
+resources/custom_levels/*.json
+
