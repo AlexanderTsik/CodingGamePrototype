@@ -1,9 +1,6 @@
-C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\bin\Debug\net10.0\CodingGamePrototypeServer.staticwebassets.endpoints.json
 C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\bin\Debug\net10.0\CodingGamePrototypeServer.exe
-C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\bin\Debug\net10.0\CodingGamePrototypeServer.deps.json
-C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\bin\Debug\net10.0\CodingGamePrototypeServer.runtimeconfig.json
 C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\bin\Debug\net10.0\CodingGamePrototypeServer.dll
-C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\bin\Debug\net10.0\CodingGamePrototypeServer.pdb
+C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\bin\Debug\net10.0\CodingGamePrototypeServer.staticwebassets.endpoints.json
 C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\obj\Debug\net10.0\rpswa.dswa.cache.json
 C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\obj\Debug\net10.0\CodingGamePrototypeServer.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\obj\Debug\net10.0\CodingGamePrototypeServer.AssemblyInfoInputs.cache
@@ -23,5 +20,3 @@ C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\obj\Debug\net10.0\
 C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\obj\Debug\net10.0\CodingGamePrototypeServer.dll
 C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\obj\Debug\net10.0\refint\CodingGamePrototypeServer.dll
 C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\obj\Debug\net10.0\CodingGamePrototypeServer.pdb
-C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\obj\Debug\net10.0\CodingGamePrototypeServer.genruntimeconfig.cache
-C:\Users\aleko\Documents\SomeProjects\LediBug_Project\_server\obj\Debug\net10.0\ref\CodingGamePrototypeServer.dll

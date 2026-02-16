@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CodingGamePrototypeServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+76208956133069a2585e55429c7ed81f618939ef")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dc54520c8a0f7ac332fe461a6a06120c0cbc079b")]
 [assembly: System.Reflection.AssemblyProductAttribute("CodingGamePrototypeServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CodingGamePrototypeServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
