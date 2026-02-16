@@ -6,9 +6,12 @@ const CellType = preload("res://scripts/cell_types.gd")
 # Current selected cell type to place
 var current_cell_type = CellType.Type.WALL
 
-# Grid data (10x10)
+# Grid data with adjustable size
 var grid_data = []
-var grid_size = 10
+var grid_width = 10
+var grid_height = 10
+const MIN_GRID_SIZE = 3
+const MAX_GRID_SIZE = 15
 
 # Grid manager and renderer
 var grid_manager: Node
@@ -21,6 +24,8 @@ var grid_renderer: Control
 @onready var name_input = $SaveDialog/MarginContainer/VBoxContainer/NameInput
 @onready var hint_input = $SaveDialog/MarginContainer/VBoxContainer/HintInput
 @onready var starter_code_input = $SaveDialog/MarginContainer/VBoxContainer/StarterCodeInput
+@onready var width_spinbox = $HSplitContainer/ToolPanel/VBoxContainer/WidthContainer/WidthSpinBox
+@onready var height_spinbox = $HSplitContainer/ToolPanel/VBoxContainer/HeightContainer/HeightSpinBox
 
 # Current level metadata
 var current_level_name = ""
@@ -51,6 +56,7 @@ func _ready():
 	$HSplitContainer/ToolPanel/VBoxContainer/StartButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.START))
 	
 	# Connect action buttons
+	$HSplitContainer/ToolPanel/VBoxContainer/ResizeButton.pressed.connect(_on_resize_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/ClearButton.pressed.connect(_on_clear_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/SaveButton.pressed.connect(_on_save_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/LoadButton.pressed.connect(_on_load_pressed)
@@ -67,6 +73,10 @@ func _ready():
 	# Enable mouse input for grid
 	grid_background.gui_input.connect(_on_grid_input)
 	
+	# Initialize spinbox values
+	width_spinbox.value = grid_width
+	height_spinbox.value = grid_height
+	
 	# Check if editing an existing level
 	await get_tree().process_frame
 	if get_tree().root.has_meta("edit_level_path"):
@@ -77,9 +87,9 @@ func _ready():
 func _initialize_grid():
 	"""Initialize empty grid"""
 	grid_data = []
-	for y in range(grid_size):
+	for y in range(grid_height):
 		var row = []
-		for x in range(grid_size):
+		for x in range(grid_width):
 			row.append(CellType.Type.EMPTY)
 		grid_data.append(row)
 
@@ -109,7 +119,7 @@ func _get_grid_position(mouse_pos: Vector2) -> Vector2i:
 	var grid_x = int(mouse_pos.x / cell_size)
 	var grid_y = int(mouse_pos.y / cell_size)
 	
-	if grid_x >= 0 and grid_x < grid_size and grid_y >= 0 and grid_y < grid_size:
+	if grid_x >= 0 and grid_x < grid_width and grid_y >= 0 and grid_y < grid_height:
 		return Vector2i(grid_x, grid_y)
 	return Vector2i(-1, -1)
 
@@ -129,16 +139,15 @@ func _erase_cell(grid_pos: Vector2i):
 
 func _remove_all_start_positions():
 	"""Remove all existing START positions from grid"""
-	for y in range(grid_size):
-		for x in range(grid_size):
+	for y in range(grid_height):
+		for x in range(grid_width):
 			if grid_data[y][x] == CellType.Type.START:
 				grid_data[y][x] = CellType.Type.EMPTY
 
 func _update_grid_manager():
 	"""Update grid manager with current grid data"""
-	for y in range(grid_size):
-		for x in range(grid_size):
-			grid_manager.grid[y][x] = grid_data[y][x]
+	var layout = _grid_to_string()
+	grid_manager.load_level_from_string(layout)
 	grid_renderer.refresh()
 
 func _on_cell_type_selected(cell_type):
@@ -150,6 +159,37 @@ func _on_clear_pressed():
 	"""Clear the entire grid"""
 	_initialize_grid()
 	_update_grid_manager()
+
+func _on_resize_pressed():
+	"""Resize the grid based on spinbox values"""
+	var new_width = int(width_spinbox.value)
+	var new_height = int(height_spinbox.value)
+	
+	# Clamp values to safe range
+	new_width = clampi(new_width, MIN_GRID_SIZE, MAX_GRID_SIZE)
+	new_height = clampi(new_height, MIN_GRID_SIZE, MAX_GRID_SIZE)
+	
+	# Save old grid data
+	var old_data = grid_data.duplicate(true)
+	var old_width = grid_width
+	var old_height = grid_height
+	
+	# Update dimensions
+	grid_width = new_width
+	grid_height = new_height
+	
+	# Initialize new grid
+	_initialize_grid()
+	
+	# Copy over existing data where it fits
+	for y in range(min(old_height, grid_height)):
+		for x in range(min(old_width, grid_width)):
+			grid_data[y][x] = old_data[y][x]
+	
+	# Update grid manager and refresh display
+	_update_grid_manager()
+	
+	print("Grid resized to %dx%d" % [grid_width, grid_height])
 
 func _on_save_pressed():
 	"""Open save dialog"""
@@ -239,8 +279,8 @@ func _load_level_data(level_data: Dictionary):
 func _grid_to_string() -> String:
 	"""Convert grid data to layout string"""
 	var result = ""
-	for y in range(grid_size):
-		for x in range(grid_size):
+	for y in range(grid_height):
+		for x in range(grid_width):
 			var cell_type = grid_data[y][x]
 			match cell_type:
 				CellType.Type.EMPTY:
@@ -258,13 +298,28 @@ func _grid_to_string() -> String:
 
 func _string_to_grid(layout: String):
 	"""Convert layout string to grid data"""
-	_initialize_grid()
+	# Parse incoming layout to determine size
 	var lines = layout.split("\n")
-	for y in range(min(lines.size(), grid_size)):
-		var line = lines[y]
-		for x in range(min(line.length(), grid_size)):
+	var filtered_lines: Array[String] = []
+	for line in lines:
+		if line.strip_edges() != "":
+			filtered_lines.append(line)
+	
+	if filtered_lines.size() > 0:
+		grid_height = min(filtered_lines.size(), MAX_GRID_SIZE)
+		grid_width = min(filtered_lines[0].length(), MAX_GRID_SIZE)
+	
+	_initialize_grid()
+	
+	for y in range(min(filtered_lines.size(), grid_height)):
+		var line = filtered_lines[y]
+		for x in range(min(line.length(), grid_width)):
 			var char = line[x]
 			grid_data[y][x] = CellType.from_char(char)
+	
+	# Update spinboxes to reflect loaded level size
+	width_spinbox.value = grid_width
+	height_spinbox.value = grid_height
 
 func _on_test_pressed():
 	"""Test the level in game"""

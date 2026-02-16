@@ -166,18 +166,19 @@ func _execute_builtin_command(cmd_name: String, arguments: Array):
 	
 	# Execute built-in commands
 	match cmd_name:
-		"moveRight":
-			current_player.move_right()
+		# Turn-based movement system
+		"move":
+			current_player.move()
 			await get_tree().create_timer(0.3).timeout
-		"moveLeft":
-			current_player.move_left()
-			await get_tree().create_timer(0.3).timeout
-		"moveUp":
-			current_player.move_up()
-			await get_tree().create_timer(0.3).timeout
-		"moveDown":
-			current_player.move_down()
-			await get_tree().create_timer(0.3).timeout
+		"turnRight":
+			current_player.turnRight()
+			await get_tree().create_timer(0.1).timeout
+		"turnLeft":
+			current_player.turnLeft()
+			await get_tree().create_timer(0.1).timeout
+		"turnBack":
+			current_player.turnBack()
+			await get_tree().create_timer(0.1).timeout
 		_:
 			_error("Unknown built-in command: %s" % cmd_name)
 
@@ -185,7 +186,7 @@ func _execute_function_call(call: ASTNodes.CallNode):
 	var func_name = call.function_name
 	
 	# Check if it's a built-in command first
-	if func_name in ["moveRight", "moveLeft", "moveUp", "moveDown"]:
+	if func_name in ["move", "turnRight", "turnLeft", "turnBack"]:
 		await _execute_builtin_command(func_name, call.arguments)
 		return
 	
@@ -448,7 +449,7 @@ func _evaluate_unary_op(op: ASTNodes.UnaryOpNode):
 	match op.operator:
 		"-":
 			return -operand
-		"not":
+		"not", "!":
 			return not _is_truthy(operand)
 		_:
 			_error("Unknown unary operator: %s" % op.operator)
@@ -585,15 +586,15 @@ func _get_error_suggestion(error_msg: String) -> String:
 	if "Undefined variable" in error_msg:
 		return "Did you forget to assign a value to this variable?"
 	elif "Undefined function" in error_msg:
-		var common_typos = {
-			"moveright": "moveRight",
-			"moveleft": "moveLeft",
-			"moveup": "moveUp",
-			"movedown": "moveDown"
+		var common_commands = {
+			"moveright": "Did you mean 'move()' and 'turnRight()'?",
+			"moveleft": "Did you mean 'move()' and 'turnLeft()'?",
+			"moveup": "Did you mean 'move()' with proper turning?",
+			"movedown": "Did you mean 'move()' with proper turning?"
 		}
-		for typo in common_typos:
+		for typo in common_commands:
 			if typo in error_msg.to_lower():
-				return "Did you mean '%s()'?" % common_typos[typo]
+				return common_commands[typo]
 		return "Make sure the function is defined before calling it."
 	elif "Division by zero" in error_msg or "Modulo by zero" in error_msg:
 		return "Check your math - you can't divide by zero!"

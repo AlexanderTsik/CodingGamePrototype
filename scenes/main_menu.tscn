@@ -92,10 +92,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -300.0
-offset_top = -250.0
-offset_right = 300.0
-offset_bottom = 250.0
+offset_left = -350.0
+offset_top = -300.0
+offset_right = 350.0
+offset_bottom = 300.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -113,6 +113,7 @@ theme_override_constants/margin_bottom = 20
 
 [node name="VBoxContainer" type="VBoxContainer" parent="HowToPlayPopup/MarginContainer"]
 layout_mode = 2
+theme_override_constants/separation = 10
 
 [node name="TitleLabel" type="Label" parent="HowToPlayPopup/MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -120,25 +121,44 @@ theme_override_font_sizes/font_size = 24
 text = "How to Play"
 horizontal_alignment = 1
 
-[node name="InstructionsLabel" type="Label" parent="HowToPlayPopup/MarginContainer/VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="HowToPlayPopup/MarginContainer/VBoxContainer"]
 layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="InstructionsLabel" type="Label" parent="HowToPlayPopup/MarginContainer/VBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
 text = "🐞 Control the ladybug with code!
 
-📝 Commands:
-• moveRight(), moveLeft()
-• moveUp(), moveDown()
+📝 Movement Commands:
+• move() - Move forward one cell
+• turnRight() - Turn 90° clockwise
+• turnLeft() - Turn 90° counter-clockwise
+• turnBack() - Turn 180° around
 
-🔍 Sensing:
-• frontIsClear() - Check for walls
+🔍 Sensors:
+• frontIsClear() - Check if front is walkable
+• leftIsClear() - Check if left is walkable
+• rightIsClear() - Check if right is walkable
 • goalReached() - Check if at goal
+• onHazard() - Check if on hazard
 
-🎯 Goal:
-Reach the green goal tile!
+🔄 Control Flow:
+• if/elif/else - Conditional execution
+• for loops - Repeat with counter
+• while loops - Repeat while condition true
+• function - Define reusable code
 
+🎯 Goal: Reach the green goal tile!
 ⚠️ Avoid red hazards - they're deadly!
 
-💡 Use loops, conditions, and functions
-to solve puzzles efficiently!"
+💡 Example:
+while (frontIsClear()) {
+    move()
+}
+turnRight()
+move()"
 autowrap_mode = 3
 
 [node name="CloseButton" type="Button" parent="HowToPlayPopup/MarginContainer/VBoxContainer"]

@@ -7,14 +7,26 @@ extends Control
 var grid_manager: GridManager
 
 func _ready():
-	# Force exact size
-	custom_minimum_size = Vector2(640, 640)
-	size = Vector2(640, 640)
 	queue_redraw()
 
 func _draw():
-	# Draw background (exactly 640x640)
-	draw_rect(Rect2(Vector2.ZERO, Vector2(640, 640)), background_color, true)
+	# Calculate dynamic size based on grid dimensions
+	var width = 640
+	var height = 640
+	
+	if grid_manager and grid_manager.grid_width > 0 and grid_manager.grid_height > 0:
+		width = grid_manager.grid_width * grid_size
+		height = grid_manager.grid_height * grid_size
+	else:
+		# Default to 10x10 if no grid manager
+		width = 10 * grid_size
+		height = 10 * grid_size
+	
+	# Update size
+	custom_minimum_size = Vector2(width, height)
+	
+	# Draw background
+	draw_rect(Rect2(Vector2.ZERO, Vector2(width, height)), background_color, true)
 	
 	# Draw cells if grid manager exists
 	if grid_manager and grid_manager.grid.size() > 0:
@@ -44,17 +56,23 @@ func _draw_cells():
 			draw_rect(rect, color.lightened(0.4), false, 3.0)
 
 func _draw_grid_lines():
-	"""Draw grid lines"""
-	var max_x = 10 * grid_size  # Exactly 10 cells wide
-	var max_y = 10 * grid_size  # Exactly 10 cells tall
+	"""Draw grid lines based on current grid dimensions"""
+	if not grid_manager:
+		return
+	
+	var grid_width = grid_manager.grid_width if grid_manager.grid_width > 0 else 10
+	var grid_height = grid_manager.grid_height if grid_manager.grid_height > 0 else 10
+	
+	var max_x = grid_width * grid_size
+	var max_y = grid_height * grid_size
 	
 	# Draw vertical lines
-	for i in range(11):  # 0-10 = 11 lines for 10 cells
+	for i in range(grid_width + 1):
 		var x = i * grid_size
 		draw_line(Vector2(x, 0), Vector2(x, max_y), grid_color, 1.0)
 	
 	# Draw horizontal lines
-	for i in range(11):  # 0-10 = 11 lines for 10 cells
+	for i in range(grid_height + 1):
 		var y = i * grid_size
 		draw_line(Vector2(0, y), Vector2(max_x, y), grid_color, 1.0)
 

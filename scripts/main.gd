@@ -4,13 +4,14 @@ extends Control
 const DebugManager = preload("res://scripts/debug_manager.gd")
 const WatchManager = preload("res://scripts/watch_manager.gd")
 
-@onready var code_input = $HSplitContainer/CodePanel/VBoxContainer/CodeInput
-@onready var run_button = $HSplitContainer/CodePanel/VBoxContainer/ButtonContainer/RunButton
-@onready var restart_button = $HSplitContainer/CodePanel/VBoxContainer/ButtonContainer/RestartButton
-@onready var next_level_button = $HSplitContainer/CodePanel/VBoxContainer/ButtonContainer/NextLevelButton
-@onready var output_label = $HSplitContainer/CodePanel/VBoxContainer/OutputLabel
-@onready var title_label = $HSplitContainer/CodePanel/VBoxContainer/TitleLabel
-@onready var menu_button = $MenuButton
+@onready var code_input = $HSplitContainer/CodePanel/VSplitContainer/TopSection/CodeInput
+@onready var run_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/RunButton
+@onready var stop_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/StopButton
+@onready var restart_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/RestartButton
+@onready var next_level_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/NextLevelButton
+@onready var menu_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/MenuButton
+@onready var output_label = $HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputLabel
+@onready var title_label = $HSplitContainer/CodePanel/VSplitContainer/TopSection/TitleLabel
 @onready var player = $HSplitContainer/GamePanel/GridBackground/Level/Player
 @onready var code_executor = $CodeExecutor
 
@@ -59,6 +60,21 @@ var log_enabled: bool = true
 const MAX_LOG_LINES: int = 100
 var execution_start_time: int = 0
 
+# Help popup UI (created programmatically)
+var help_popup: PopupPanel
+var help_button: Button
+
+# Debug mode control
+var debug_mode: bool = false
+var debug_button: Button
+
+# Theme control
+var is_dark_mode: bool = true
+var theme_toggle_button: Button
+
+# Syntax highlighter
+var syntax_highlighter: CodeHighlighter
+
 var grid_manager: GridManager
 var is_level_complete: bool = false
 var player_is_dead: bool = false
@@ -66,67 +82,77 @@ var current_level_id: int = 1
 var level_definitions: Node
 
 # Available commands and keywords for code completion
-var available_commands = ["moveRight()", "moveLeft()", "moveUp()", "moveDown()", "frontIsClear()", "goalReached()", "onHazard()", "leftIsClear()", "rightIsClear()"]
+var available_commands = ["move()", "turnRight()", "turnLeft()", "turnBack()", "frontIsClear()", "goalReached()", "onHazard()", "leftIsClear()", "rightIsClear()"]
 var available_keywords = ["if", "else", "elif", "for", "while", "do", "function", "return", "in", "range", "and", "or", "not"]
 
 # Example code snippets
 var examples = {
-	"simple_moves": """# Simple movement
-moveRight()
-moveRight()
-moveUp()
-moveLeft()""",
+	"simple_moves": """# Simple movement with turns
+move()
+move()
+turnRight()
+move()
+turnLeft()
+move()""",
 	
 	"for_loop": """# For loop example
 for (i in range(5)) {
-	moveRight()
-}""",
+	move()
+}
+turnRight()
+move()""",
 	
 	"if_else": """# If-else example
 x = 5
 if (x > 3) {
-	moveUp()
-	moveUp()
+	move()
+	move()
 } else {
-	moveDown()
+	turnBack()
+	move()
 }""",
 	
-	"while_loop": """# While loop example
-count = 0
-while (count < 3) {
-	moveRight()
-	count = count + 1
-}""",
+	"while_loop": """# While loop with sensors
+while (frontIsClear()) {
+	move()
+}
+turnRight()""",
 	
 	"sensing": """# Using sensors
 while(frontIsClear()) {
-	moveRight()
+	move()
 }
-moveDown()""",
+turnRight()
+while(frontIsClear()) {
+	move()
+}""",
 	
 	"function": """# Function example
 function square() {
-	moveRight()
-	moveDown()
-	moveLeft()
-	moveUp()
+	for (i in range(4)) {
+		move()
+		turnRight()
+	}
 }
 
 square()
+move()
 square()""",
 	
 	"nested": """# Nested control flow
 for (i in range(3)) {
 	if (i == 1) {
-		moveUp()
+		turnLeft()
+		move()
 	} else {
-		moveRight()
+		move()
 	}
 }"""
 }
 
 func _ready():
 	run_button.pressed.connect(_on_run_button_pressed)
+	stop_button.pressed.connect(_on_stop_button_pressed)
 	restart_button.pressed.connect(_on_restart_button_pressed)
 	next_level_button.pressed.connect(_on_next_level_button_pressed)
 	menu_button.pressed.connect(_on_menu_button_pressed)
@@ -162,9 +188,12 @@ func _ready():
 	# Load level definitions
 	level_definitions = load("res://scripts/level_definitions.gd").new()
 	
+	# Setup syntax highlighting
+	_setup_syntax_highlighting()
+	
 	# Enable code completion
 	code_input.code_completion_enabled = true
-	code_input.code_completion_prefixes = ["move", "if", "for", "while", "function"]
+	code_input.code_completion_prefixes = ["move", "turn", "if", "for", "while", "function", "front", "goal", "left", "right", "onHazard"]
 	code_input.code_completion_requested.connect(_on_code_completion_requested)
 	
 	# Setup line highlighting
@@ -184,6 +213,9 @@ func _ready():
 	
 	# Setup execution log UI
 	_setup_execution_log()
+	
+	# Setup help button and popup
+	_setup_help_system()
 	
 	# Set default example code
 	code_input.text = examples["simple_moves"]
@@ -332,6 +364,10 @@ func _on_code_completion_requested():
 	code_input.update_code_completion_options(true)
 
 func _on_run_button_pressed():
+	# Set to normal run mode (no debug UI)
+	debug_mode = false
+	_hide_debug_ui()
+	
 	# Reset level state
 	is_level_complete = false
 	player_is_dead = false
@@ -347,18 +383,60 @@ func _on_run_button_pressed():
 	var code = code_input.text
 	output_label.text = "Executing..."
 	run_button.disabled = true
+	debug_button.disabled = true
+	stop_button.disabled = false
 	player.reset_position()
 	code_executor.execute_code(code, player)
+
+func _on_debug_button_pressed():
+	# Set to debug mode (show debug UI)
+	debug_mode = true
+	_show_debug_ui()
+	
+	# Reset level state
+	is_level_complete = false
+	player_is_dead = false
+	
+	# Clear variables, call stack, and log from previous execution
+	_clear_variables()
+	_clear_callstack()
+	_clear_execution_log()
+	
+	# Start timing for execution log
+	execution_start_time = Time.get_ticks_msec()
+	
+	var code = code_input.text
+	output_label.text = "Debugging..."
+	run_button.disabled = true
+	debug_button.disabled = true
+	stop_button.disabled = false
+	player.reset_position()
+	code_executor.execute_code(code, player)
+
+func _on_stop_button_pressed():
+	"""Stop the currently executing code"""
+	code_executor.stop_execution()
+	output_label.text = "❌ Execution stopped"
+	run_button.disabled = false
+	debug_button.disabled = false
+	stop_button.disabled = true
+	player.reset_position()
 
 func _on_execution_complete():
 	if is_level_complete:
 		output_label.text = "🎉 Level Complete! Press 'Next Level' to continue!"
+		output_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))  # Green
 		next_level_button.disabled = false
 	elif player_is_dead:
 		output_label.text = "💀 You died! Click 'Restart' to try again."
+		output_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.3))  # Orange
 	else:
 		output_label.text = "Execution complete! ✓"
+		# Reset to theme color
+		output_label.remove_theme_color_override("font_color")
 	run_button.disabled = false
+	debug_button.disabled = false
+	stop_button.disabled = true
 	
 	# Clear line highlighting after execution
 	if current_line_highlight >= 0:
@@ -383,8 +461,16 @@ func _on_menu_button_pressed():
 	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 func _on_execution_error(error_msg: String):
-	output_label.text = "Error: " + error_msg
+	"""Handle execution errors with proper formatting"""
+	# Add red error styling
+	output_label.text = "❌ Error: " + error_msg
+	output_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))  # Red
+	
 	run_button.disabled = false
+	debug_button.disabled = false
+	stop_button.disabled = true
+	
+	print("ERROR: ", error_msg)
 
 func _on_level_completed():
 	"""Called when player reaches goal"""
@@ -398,52 +484,20 @@ func _on_player_died():
 	print("💀 Player died!")
 
 func _update_help_text():
-	output_label.text = """Commands:
-moveRight(), moveLeft()
-moveUp(), moveDown()
+	output_label.text = """Movement Commands:
+move() - Move forward
+turnRight() - Turn 90° clockwise
+turnLeft() - Turn 90° counter-clockwise
+turnBack() - Turn around
+
+Sensors:
+frontIsClear(), leftIsClear(), rightIsClear()
+goalReached(), onHazard()
 
 Control Flow:
 if/elif/else, for, while, do-while
 
-Examples: Press F1-F6
-F1: Simple moves
-F2: For loop
-F3: If-else
-F4: While loop
-F5: Function
-F6: Nested
-
 Click Run to execute!"""
-
-func _input(event):
-	# Level selection with number keys 1-8
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode >= KEY_1 and event.keycode <= KEY_8:
-			var level_num = event.keycode - KEY_0
-			if level_num <= level_definitions.get_level_count():
-				load_level(level_num)
-				print("Switched to Level %d" % level_num)
-		
-		# Example shortcuts (F1-F6)
-		match event.keycode:
-			KEY_F1:
-				code_input.text = examples["simple_moves"]
-				_update_help_text()
-			KEY_F2:
-				code_input.text = examples["for_loop"]
-				_update_help_text()
-			KEY_F3:
-				code_input.text = examples["if_else"]
-				_update_help_text()
-			KEY_F4:
-				code_input.text = examples["while_loop"]
-				_update_help_text()
-			KEY_F5:
-				code_input.text = examples["function"]
-				_update_help_text()
-			KEY_F6:
-				code_input.text = examples["nested"]
-				_update_help_text()
 
 # ============================================
 # Visual Feedback System
@@ -547,7 +601,7 @@ func _setup_variable_viewer():
 	# Create scroll container for variables
 	variables_scroll = ScrollContainer.new()
 	variables_scroll.name = "VariablesScroll"
-	variables_scroll.custom_minimum_size = Vector2(200, 150)
+	variables_scroll.custom_minimum_size = Vector2(150, 80)
 	variables_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	vbox.add_child(variables_scroll)
 	
@@ -556,13 +610,12 @@ func _setup_variable_viewer():
 	variables_list.name = "VariablesList"
 	variables_scroll.add_child(variables_list)
 	
-	# Position the panel below the code editor
-	var code_panel = get_node("HSplitContainer/CodePanel/VBoxContainer")
-	code_panel.add_child(variables_panel)
+	# Position the panel in the debug section (resizable)
+	var debug_section = get_node("HSplitContainer/CodePanel/VSplitContainer/DebugSection")
+	debug_section.add_child(variables_panel)
 	
-	# Show panel but hide content initially (so toggle button is visible)
-	variables_panel.visible = true
-	variables_scroll.visible = false
+	# Hide panel by default (show only in debug mode)
+	variables_panel.visible = false
 	
 	print("DEBUG: Variable viewer UI created!")
 
@@ -621,7 +674,7 @@ func _setup_watch_viewer():
 	# Create scroll container for watches
 	watch_scroll = ScrollContainer.new()
 	watch_scroll.name = "WatchScroll"
-	watch_scroll.custom_minimum_size = Vector2(200, 120)
+	watch_scroll.custom_minimum_size = Vector2(150, 80)
 	watch_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	vbox.add_child(watch_scroll)
 	
@@ -631,12 +684,11 @@ func _setup_watch_viewer():
 	watch_scroll.add_child(watch_list)
 	
 	# Position the panel below the variables panel
-	var code_panel = get_node("HSplitContainer/CodePanel/VBoxContainer")
-	code_panel.add_child(watch_panel)
+	var debug_section = get_node("HSplitContainer/CodePanel/VSplitContainer/DebugSection")
+	debug_section.add_child(watch_panel)
 	
-	# Show panel and content by default
-	watch_panel.visible = true
-	watch_scroll.visible = true
+	# Hide panel by default (show only in debug mode)
+	watch_panel.visible = false
 	
 	print("DEBUG: Watch viewer UI created!")
 
@@ -674,7 +726,7 @@ func _setup_callstack_viewer():
 	# Create scroll container for call stack
 	callstack_scroll = ScrollContainer.new()
 	callstack_scroll.name = "CallStackScroll"
-	callstack_scroll.custom_minimum_size = Vector2(200, 100)
+	callstack_scroll.custom_minimum_size = Vector2(150, 60)
 	callstack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	vbox.add_child(callstack_scroll)
 	
@@ -684,12 +736,11 @@ func _setup_callstack_viewer():
 	callstack_scroll.add_child(callstack_list)
 	
 	# Position the panel below the code editor
-	var code_panel = get_node("HSplitContainer/CodePanel/VBoxContainer")
-	code_panel.add_child(callstack_panel)
+	var debug_section = get_node("HSplitContainer/CodePanel/VSplitContainer/DebugSection")
+	debug_section.add_child(callstack_panel)
 	
-	# Show panel but hide content initially (so toggle button is visible)
-	callstack_panel.visible = true
-	callstack_scroll.visible = false
+	# Hide panel by default (show only in debug mode)
+	callstack_panel.visible = false
 	
 	print("DEBUG: Call stack viewer UI created!")
 
@@ -727,7 +778,7 @@ func _setup_execution_log():
 	# Create scroll container for log
 	execution_log_scroll = ScrollContainer.new()
 	execution_log_scroll.name = "ExecutionLogScroll"
-	execution_log_scroll.custom_minimum_size = Vector2(200, 200)
+	execution_log_scroll.custom_minimum_size = Vector2(150, 100)
 	execution_log_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	execution_log_scroll.follow_focus = true
 	vbox.add_child(execution_log_scroll)
@@ -745,13 +796,11 @@ func _setup_execution_log():
 	execution_log_scroll.add_child(execution_log)
 	
 	# Position the panel below the code editor
-	var code_panel = get_node("HSplitContainer/CodePanel/VBoxContainer")
-	code_panel.add_child(execution_log_panel)
+	var debug_section = get_node("HSplitContainer/CodePanel/VSplitContainer/DebugSection")
+	debug_section.add_child(execution_log_panel)
 	
-	# Show panel and content by default for testing
-	execution_log_panel.visible = true
-	execution_log_scroll.visible = true
-	execution_log_toggle_btn.text = "Hide"
+	# Hide panel by default (show only in debug mode)
+	execution_log_panel.visible = false
 	
 	print("DEBUG: Execution log UI created!")
 
@@ -769,28 +818,29 @@ func _setup_debug_toolbar():
 	panel_stylebox.border_color = Color(0.3, 0.6, 0.9, 1.0)
 	debug_toolbar.add_theme_stylebox_override("panel", panel_stylebox)
 	
-	# Create horizontal layout
-	var hbox = HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 8)
-	debug_toolbar.add_child(hbox)
+	# Create flow container that wraps to multiple lines when needed
+	var flow = HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 8)
+	flow.add_theme_constant_override("v_separation", 4)
+	debug_toolbar.add_child(flow)
 	
 	# Add label
 	var toolbar_label = Label.new()
 	toolbar_label.text = "Debug Controls:"
 	toolbar_label.add_theme_font_size_override("font_size", 14)
 	toolbar_label.add_theme_color_override("font_color", Color.CYAN)
-	hbox.add_child(toolbar_label)
+	flow.add_child(toolbar_label)
 	
 	# Add separator
 	var sep1 = VSeparator.new()
-	hbox.add_child(sep1)
+	flow.add_child(sep1)
 	
 	# Pause button
 	pause_btn = Button.new()
 	pause_btn.text = "⏸ Pause"
 	pause_btn.custom_minimum_size = Vector2(80, 30)
 	pause_btn.pressed.connect(_on_pause_pressed)
-	hbox.add_child(pause_btn)
+	flow.add_child(pause_btn)
 	
 	# Resume button
 	resume_btn = Button.new()
@@ -798,42 +848,42 @@ func _setup_debug_toolbar():
 	resume_btn.custom_minimum_size = Vector2(80, 30)
 	resume_btn.disabled = true
 	resume_btn.pressed.connect(_on_resume_pressed)
-	hbox.add_child(resume_btn)
+	flow.add_child(resume_btn)
 	
 	# Add separator
 	var sep2 = VSeparator.new()
-	hbox.add_child(sep2)
+	flow.add_child(sep2)
 	
 	# Step Over button
 	step_over_btn = Button.new()
 	step_over_btn.text = "⤵ Step Over"
 	step_over_btn.custom_minimum_size = Vector2(100, 30)
 	step_over_btn.pressed.connect(_on_step_over_pressed)
-	hbox.add_child(step_over_btn)
+	flow.add_child(step_over_btn)
 	
 	# Step Into button
 	step_into_btn = Button.new()
 	step_into_btn.text = "↓ Step Into"
 	step_into_btn.custom_minimum_size = Vector2(100, 30)
 	step_into_btn.pressed.connect(_on_step_into_pressed)
-	hbox.add_child(step_into_btn)
+	flow.add_child(step_into_btn)
 	
 	# Step Out button
 	step_out_btn = Button.new()
 	step_out_btn.text = "↑ Step Out"
 	step_out_btn.custom_minimum_size = Vector2(100, 30)
 	step_out_btn.pressed.connect(_on_step_out_pressed)
-	hbox.add_child(step_out_btn)
+	flow.add_child(step_out_btn)
 	
 	# Add separator
 	var sep3 = VSeparator.new()
-	hbox.add_child(sep3)
+	flow.add_child(sep3)
 	
 	# Speed control label
 	speed_label = Label.new()
 	speed_label.text = "Speed: 1.0x"
 	speed_label.add_theme_font_size_override("font_size", 12)
-	hbox.add_child(speed_label)
+	flow.add_child(speed_label)
 	
 	# Speed slider
 	speed_slider = HSlider.new()
@@ -843,12 +893,12 @@ func _setup_debug_toolbar():
 	speed_slider.value = 1.0
 	speed_slider.custom_minimum_size = Vector2(150, 20)
 	speed_slider.value_changed.connect(_on_speed_changed)
-	hbox.add_child(speed_slider)
+	flow.add_child(speed_slider)
 	
 	# Speed preset buttons
 	var preset_container = HBoxContainer.new()
 	preset_container.add_theme_constant_override("separation", 4)
-	hbox.add_child(preset_container)
+	flow.add_child(preset_container)
 	
 	var speed_025_btn = Button.new()
 	speed_025_btn.text = "0.25x"
@@ -881,13 +931,217 @@ func _setup_debug_toolbar():
 	preset_container.add_child(speed_5_btn)
 	
 	# Add toolbar to main UI (below the button container)
-	var code_panel = get_node("HSplitContainer/CodePanel/VBoxContainer")
+	var code_panel = get_node("HSplitContainer/CodePanel/VSplitContainer/TopSection")
 	var button_container = code_panel.get_node("ButtonContainer")
 	var button_idx = button_container.get_index()
 	code_panel.add_child(debug_toolbar)
 	code_panel.move_child(debug_toolbar, button_idx + 1)
 	
 	print("DEBUG: Debug toolbar created!")
+	
+	# Hide debug toolbar by default (only show in debug mode)
+	debug_toolbar.visible = false
+
+func _setup_help_system():
+	"""Create help button and popup with command reference"""
+	# Create debug button with orange/amber styling
+	debug_button = Button.new()
+	debug_button.text = "🐞 Debug"
+	debug_button.custom_minimum_size = Vector2(100, 30)
+	debug_button.pressed.connect(_on_debug_button_pressed)
+	
+	# Apply orange/amber theme
+	var debug_normal = StyleBoxFlat.new()
+	debug_normal.bg_color = Color(0.8, 0.5, 0.1)  # Orange
+	debug_normal.corner_radius_top_left = 4
+	debug_normal.corner_radius_top_right = 4
+	debug_normal.corner_radius_bottom_left = 4
+	debug_normal.corner_radius_bottom_right = 4
+	debug_button.add_theme_stylebox_override("normal", debug_normal)
+	
+	var debug_hover = StyleBoxFlat.new()
+	debug_hover.bg_color = Color(0.95, 0.6, 0.15)  # Lighter orange
+	debug_hover.corner_radius_top_left = 4
+	debug_hover.corner_radius_top_right = 4
+	debug_hover.corner_radius_bottom_left = 4
+	debug_hover.corner_radius_bottom_right = 4
+	debug_button.add_theme_stylebox_override("hover", debug_hover)
+	debug_button.add_theme_stylebox_override("pressed", debug_hover)
+	
+	# Add to button container (right after Run button)
+	var button_container = get_node("HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer")
+	button_container.add_child(debug_button)
+	button_container.move_child(debug_button, 3)  # After Run button (position 3)
+	
+	# Create help button
+	help_button = Button.new()
+	help_button.text = "❓ Help"
+	help_button.custom_minimum_size = Vector2(80, 30)
+	help_button.pressed.connect(_on_help_button_pressed)
+	
+	# Add to button container
+	button_container.add_child(help_button)
+	
+	# Create theme toggle button
+	theme_toggle_button = Button.new()
+	theme_toggle_button.text = "☀️ Light"
+	theme_toggle_button.custom_minimum_size = Vector2(80, 30)
+	theme_toggle_button.pressed.connect(_on_theme_toggle_pressed)
+	
+	# Add to button container
+	button_container.add_child(theme_toggle_button)
+	
+	# Create popup panel
+	help_popup = PopupPanel.new()
+	help_popup.name = "HelpPopup"
+	help_popup.size = Vector2(600, 500)
+	help_popup.position = Vector2(300, 100)
+	add_child(help_popup)
+	
+	# Create scroll container for help content
+	var scroll = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(580, 480)
+	help_popup.add_child(scroll)
+	
+	# Create VBoxContainer for layout
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	scroll.add_child(vbox)
+	
+	# Title
+	var title = Label.new()
+	title.text = "📚 Command Reference"
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color.CYAN)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	
+	# Separator
+	var sep1 = HSeparator.new()
+	vbox.add_child(sep1)
+	
+	# Movement Commands Section
+	var movement_header = Label.new()
+	movement_header.text = "🎮 Movement Commands"
+	movement_header.add_theme_font_size_override("font_size", 18)
+	movement_header.add_theme_color_override("font_color", Color.YELLOW)
+	vbox.add_child(movement_header)
+	
+	var movement_text = Label.new()
+	movement_text.text = """• move() - Move forward one cell in current direction
+• turnRight() - Turn 90 degrees clockwise
+• turnLeft() - Turn 90 degrees counter-clockwise
+• turnBack() - Turn around 180 degrees"""
+	movement_text.autowrap_mode = TextServer.AUTOWRAP_WORD
+	vbox.add_child(movement_text)
+	
+	# Sensors Section
+	var sep2 = HSeparator.new()
+	vbox.add_child(sep2)
+	
+	var sensors_header = Label.new()
+	sensors_header.text = "🔍 Sensors"
+	sensors_header.add_theme_font_size_override("font_size", 18)
+	sensors_header.add_theme_color_override("font_color", Color.GREEN)
+	vbox.add_child(sensors_header)
+	
+	var sensors_text = Label.new()
+	sensors_text.text = """• frontIsClear() - Returns true if front cell is walkable
+• leftIsClear() - Returns true if left cell is walkable
+• rightIsClear() - Returns true if right cell is walkable
+• goalReached() - Returns true if standing on goal
+• onHazard() - Returns true if standing on hazard"""
+	sensors_text.autowrap_mode = TextServer.AUTOWRAP_WORD
+	vbox.add_child(sensors_text)
+	
+	# Control Flow Section
+	var sep3 = HSeparator.new()
+	vbox.add_child(sep3)
+	
+	var control_header = Label.new()
+	control_header.text = "🔄 Control Flow"
+	control_header.add_theme_font_size_override("font_size", 18)
+	control_header.add_theme_color_override("font_color", Color.ORANGE)
+	vbox.add_child(control_header)
+	
+	var control_text = Label.new()
+	control_text.text = """• if (condition) { ... } - Execute if condition is true
+• elif (condition) { ... } - Check another condition
+• else { ... } - Execute if all conditions false
+• for (i in range(n)) { ... } - Repeat n times
+• while (condition) { ... } - Repeat while condition true
+• function name() { ... } - Define reusable code"""
+	control_text.autowrap_mode = TextServer.AUTOWRAP_WORD
+	vbox.add_child(control_text)
+	
+	# Examples Section
+	var sep4 = HSeparator.new()
+	vbox.add_child(sep4)
+	
+	var examples_header = Label.new()
+	examples_header.text = "💡 Examples"
+	examples_header.add_theme_font_size_override("font_size", 18)
+	examples_header.add_theme_color_override("font_color", Color.MAGENTA)
+	vbox.add_child(examples_header)
+	
+	var example1 = Label.new()
+	example1.text = """Example 1: Simple Movement
+move()
+move()
+turnRight()
+move()"""
+	example1.add_theme_font_override("font", load("res://fonts/code_font.tres") if ResourceLoader.exists("res://fonts/code_font.tres") else null)
+	example1.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+	vbox.add_child(example1)
+	
+	var example2 = Label.new()
+	example2.text = """Example 2: Navigate with Sensors
+while (frontIsClear()) {
+    move()
+}
+turnRight()
+while (frontIsClear()) {
+    move()
+}"""
+	example2.add_theme_font_override("font", load("res://fonts/code_font.tres") if ResourceLoader.exists("res://fonts/code_font.tres") else null)
+	example2.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+	vbox.add_child(example2)
+	
+	var example3 = Label.new()
+	example3.text = """Example 3: Function with Loop
+function square() {
+    for (i in range(4)) {
+        move()
+        turnRight()
+    }
+}
+
+square()"""
+	example3.add_theme_font_override("font", load("res://fonts/code_font.tres") if ResourceLoader.exists("res://fonts/code_font.tres") else null)
+	example3.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+	vbox.add_child(example3)
+	
+	# Close button
+	var sep5 = HSeparator.new()
+	vbox.add_child(sep5)
+	
+	var close_btn = Button.new()
+	close_btn.text = "Close"
+	close_btn.custom_minimum_size = Vector2(100, 40)
+	close_btn.pressed.connect(_on_help_close_pressed)
+	vbox.add_child(close_btn)
+	
+	print("DEBUG: Help system created!")
+
+func _on_help_button_pressed():
+	"""Show the help popup"""
+	if help_popup:
+		help_popup.popup_centered()
+
+func _on_help_close_pressed():
+	"""Hide the help popup"""
+	if help_popup:
+		help_popup.hide()
 
 func _on_line_executing(line_number: int):
 	"""Called when a line is about to be executed"""
@@ -1281,3 +1535,185 @@ func _set_speed_preset(speed: float):
 	"""Set speed to a preset value"""
 	speed_slider.value = speed
 	# _on_speed_changed will be called automatically
+
+# ============================================
+# Debug Mode UI Control
+# ============================================
+
+func _show_debug_ui():
+	"""Show all debug panels and toolbar"""
+	if debug_toolbar:
+		debug_toolbar.visible = true
+	if variables_panel:
+		variables_panel.visible = true
+	if watch_panel:
+		watch_panel.visible = true
+	if callstack_panel:
+		callstack_panel.visible = true
+	if execution_log_panel:
+		execution_log_panel.visible = true
+	print("DEBUG: Debug UI shown")
+
+func _hide_debug_ui():
+	"""Hide all debug panels and toolbar"""
+	if debug_toolbar:
+		debug_toolbar.visible = false
+	if variables_panel:
+		variables_panel.visible = false
+	if watch_panel:
+		watch_panel.visible = false
+	if callstack_panel:
+		callstack_panel.visible = false
+	if execution_log_panel:
+		execution_log_panel.visible = false
+	print("DEBUG: Debug UI hidden")
+
+func _on_theme_toggle_pressed():
+	"""Toggle between dark and light themes"""
+	is_dark_mode = not is_dark_mode
+	_apply_theme()
+
+func _apply_theme():
+	"""Apply the current theme (dark or light) to all UI elements"""
+	var code_panel = get_node("HSplitContainer/CodePanel")
+	
+	if is_dark_mode:
+		# Dark theme colors
+		theme_toggle_button.text = "☀️ Light"
+		
+		# Code panel background
+		var panel_style = StyleBoxFlat.new()
+		panel_style.bg_color = Color(0.15, 0.15, 0.2, 1)
+		panel_style.border_width_left = 2
+		panel_style.border_width_top = 2
+		panel_style.border_width_right = 2
+		panel_style.border_width_bottom = 2
+		panel_style.border_color = Color(0.3, 0.3, 0.35, 1)
+		panel_style.corner_radius_top_left = 6
+		panel_style.corner_radius_top_right = 6
+		panel_style.corner_radius_bottom_right = 6
+		panel_style.corner_radius_bottom_left = 6
+		code_panel.add_theme_stylebox_override("panel", panel_style)
+		
+		# Code editor colors
+		code_input.add_theme_color_override("background_color", Color(0.12, 0.12, 0.15, 1))
+		code_input.add_theme_color_override("font_color", Color(0.83, 0.83, 0.83, 1))
+		code_input.add_theme_color_override("current_line_color", Color(0.2, 0.2, 0.25, 1))
+		code_input.add_theme_color_override("caret_color", Color(1, 1, 1, 1))
+		code_input.add_theme_color_override("line_number_color", Color(0.5, 0.5, 0.55, 1))
+		
+		# Title and output labels
+		title_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1))
+		output_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1))
+		
+	else:
+		# Light theme colors
+		theme_toggle_button.text = "🌙 Dark"
+		
+		# Code panel background
+		var panel_style = StyleBoxFlat.new()
+		panel_style.bg_color = Color(0.95, 0.95, 0.97, 1)
+		panel_style.border_width_left = 2
+		panel_style.border_width_top = 2
+		panel_style.border_width_right = 2
+		panel_style.border_width_bottom = 2
+		panel_style.border_color = Color(0.7, 0.7, 0.75, 1)
+		panel_style.corner_radius_top_left = 6
+		panel_style.corner_radius_top_right = 6
+		panel_style.corner_radius_bottom_right = 6
+		panel_style.corner_radius_bottom_left = 6
+		code_panel.add_theme_stylebox_override("panel", panel_style)
+		
+		# Code editor colors
+		code_input.add_theme_color_override("background_color", Color(1, 1, 1, 1))
+		code_input.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1, 1))
+		code_input.add_theme_color_override("current_line_color", Color(0.95, 0.95, 0.97, 1))
+		code_input.add_theme_color_override("caret_color", Color(0, 0, 0, 1))
+		code_input.add_theme_color_override("line_number_color", Color(0.5, 0.5, 0.5, 1))
+		
+		# Title and output labels
+		title_label.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1, 1))
+		output_label.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1, 1))
+	
+	# Reapply syntax highlighting with theme colors
+	_setup_syntax_highlighting()
+
+func _setup_syntax_highlighting():
+	"""Setup syntax highlighting for code editor"""
+	syntax_highlighter = CodeHighlighter.new()
+	
+	# Define colors based on current theme
+	var keyword_color: Color
+	var function_color: Color
+	var string_color: Color
+	var number_color: Color
+	var comment_color: Color
+	var symbol_color: Color
+	
+	if is_dark_mode:
+		# Dark theme - BRIGHT colors on dark background
+		keyword_color = Color(1.0, 0.4, 1.0)      # Bright magenta for if/for/while
+		function_color = Color(0.3, 0.9, 1.0)     # Bright cyan for move()/turn()
+		string_color = Color(0.9, 1.0, 0.4)       # Bright yellow for strings
+		number_color = Color(1.0, 0.7, 0.3)       # Bright orange for numbers
+		comment_color = Color(0.5, 0.7, 0.5)      # Gray-green for comments
+		symbol_color = Color(0.9, 0.9, 0.9)       # Light gray for brackets/symbols
+	else:
+		# Light theme - DARK colors on white background
+		keyword_color = Color(0.5, 0.0, 0.7)      # Dark purple
+		function_color = Color(0.0, 0.3, 0.7)     # Dark blue
+		string_color = Color(0.3, 0.5, 0.0)       # Dark olive green
+		number_color = Color(0.7, 0.3, 0.0)       # Dark orange/brown
+		comment_color = Color(0.4, 0.4, 0.4)      # Dark gray
+		symbol_color = Color(0.3, 0.3, 0.3)       # Dark gray for brackets/symbols
+	
+	# Control flow keywords (purple)
+	syntax_highlighter.add_keyword_color("if", keyword_color)
+	syntax_highlighter.add_keyword_color("else", keyword_color)
+	syntax_highlighter.add_keyword_color("elif", keyword_color)
+	syntax_highlighter.add_keyword_color("for", keyword_color)
+	syntax_highlighter.add_keyword_color("while", keyword_color)
+	syntax_highlighter.add_keyword_color("function", keyword_color)
+	syntax_highlighter.add_keyword_color("return", keyword_color)
+	syntax_highlighter.add_keyword_color("break", keyword_color)
+	syntax_highlighter.add_keyword_color("continue", keyword_color)
+	syntax_highlighter.add_keyword_color("true", keyword_color)
+	syntax_highlighter.add_keyword_color("false", keyword_color)
+	syntax_highlighter.add_keyword_color("null", keyword_color)
+	
+	# Movement commands (cyan)
+	syntax_highlighter.add_keyword_color("move", function_color)
+	syntax_highlighter.add_keyword_color("turnRight", function_color)
+	syntax_highlighter.add_keyword_color("turnLeft", function_color)
+	syntax_highlighter.add_keyword_color("turnBack", function_color)
+	
+	# Sensor functions (cyan)
+	syntax_highlighter.add_keyword_color("frontIsClear", function_color)
+	syntax_highlighter.add_keyword_color("leftIsClear", function_color)
+	syntax_highlighter.add_keyword_color("rightIsClear", function_color)
+	syntax_highlighter.add_keyword_color("backIsClear", function_color)
+	syntax_highlighter.add_keyword_color("onGoal", function_color)
+	syntax_highlighter.add_keyword_color("goalReached", function_color)
+	syntax_highlighter.add_keyword_color("onHazard", function_color)
+	
+	# Special operators
+	syntax_highlighter.add_keyword_color("and", keyword_color)
+	syntax_highlighter.add_keyword_color("or", keyword_color)
+	syntax_highlighter.add_keyword_color("not", keyword_color)
+	
+	# Number and string coloring
+	syntax_highlighter.number_color = number_color
+	syntax_highlighter.symbol_color = symbol_color  # Brackets, parentheses, operators
+	syntax_highlighter.add_color_region('"', '"', string_color)
+	syntax_highlighter.add_color_region("'", "'", string_color)
+	syntax_highlighter.add_color_region("#", "", comment_color, true)  # Line comments
+	
+	# Apply to code editor
+	code_input.syntax_highlighter = syntax_highlighter
+	
+	print("✨ Syntax highlighting updated:")
+	print("  Theme: ", "DARK" if is_dark_mode else "LIGHT")
+	print("  Keywords: ", keyword_color)
+	print("  Functions: ", function_color)
+	print("  Strings: ", string_color)
+	print("  Symbols: ", symbol_color)

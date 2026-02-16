@@ -1,8 +1,15 @@
 extends Control
 
+# Store file path for confirmation
+var pending_delete_path: String = ""
+
 func _ready():
 	# Connect back button
 	$MarginContainer/VBoxContainer/ButtonContainer/BackButton.pressed.connect(_on_back_pressed)
+	$MarginContainer/VBoxContainer/ButtonContainer/RefreshButton.pressed.connect(_on_refresh_pressed)
+	
+	# Connect confirmation dialog
+	$DeleteConfirmDialog.confirmed.connect(_on_delete_confirmed)
 	
 	# Load and display custom levels
 	_load_custom_levels()
@@ -122,15 +129,37 @@ func _on_edit_pressed(file_path: String):
 	get_tree().change_scene_to_file("res://scenes/level_editor.tscn")
 
 func _on_delete_pressed(file_path: String):
-	"""Delete the selected custom level"""
-	# TODO: Add confirmation dialog
-	if DirAccess.remove_absolute(file_path) == OK:
-		print("Deleted level: ", file_path)
+	"""Show confirmation dialog before deleting"""
+	pending_delete_path = file_path
+	
+	# Extract level name from file path
+	var file_name = file_path.get_file().get_basename().replace("_", " ").capitalize()
+	
+	$DeleteConfirmDialog.dialog_text = "Are you sure you want to delete '%s'?\nThis cannot be undone!" % file_name
+	$DeleteConfirmDialog.popup_centered()
+
+func _on_delete_confirmed():
+	"""Delete the level after confirmation"""
+	if pending_delete_path == "":
+		return
+	
+	if DirAccess.remove_absolute(pending_delete_path) == OK:
+		print("Deleted level: ", pending_delete_path)
+		pending_delete_path = ""
 		# Refresh the list
-		_clear_grid()
-		_load_custom_levels()
+		_refresh_list()
 	else:
-		push_error("Failed to delete level: ", file_path)
+		push_error("Failed to delete level: ", pending_delete_path)
+		pending_delete_path = ""
+
+func _on_refresh_pressed():
+	"""Refresh the level list"""
+	_refresh_list()
+
+func _refresh_list():
+	"""Clear and reload the level list"""
+	_clear_grid()
+	_load_custom_levels()
 
 func _clear_grid():
 	"""Clear all children from grid"""

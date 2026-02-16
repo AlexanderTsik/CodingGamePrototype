@@ -114,9 +114,8 @@ func tokenize(code: String) -> Array:
 					column += 1
 					_add_token(TokenType.NOT_EQUALS, "!=")
 				else:
-					push_error("Unexpected character '!' at line %d, column %d" % [line, column])
-					position += 1
-					column += 1
+					# Support ! as NOT operator (same as 'not' keyword)
+					_add_token(TokenType.NOT, "!")
 			'<':
 				if _peek() == '=':
 					position += 1

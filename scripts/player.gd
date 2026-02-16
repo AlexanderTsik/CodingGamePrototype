@@ -29,25 +29,35 @@ func reset_position():
 	current_direction = Vector2i(0, -1)  # Reset to face up
 	_update_facing_rotation()
 
-func move_right():
-	current_direction = Vector2i(1, 0)
-	_update_facing_rotation()
+func move():
+	"""Move one cell forward in the current facing direction"""
 	_attempt_move(current_direction)
 
-func move_left():
-	current_direction = Vector2i(-1, 0)
+func turnRight():
+	"""Turn 90 degrees clockwise"""
+	# Rotate direction vector 90 degrees clockwise
+	# (x, y) -> (y, -x)
+	var new_x = -current_direction.y
+	var new_y = current_direction.x
+	current_direction = Vector2i(new_x, new_y)
 	_update_facing_rotation()
-	_attempt_move(current_direction)
+	print("Turned right, now facing: %v" % current_direction)
 
-func move_up():
-	current_direction = Vector2i(0, -1)
+func turnLeft():
+	"""Turn 90 degrees counter-clockwise"""
+	# Rotate direction vector 90 degrees counter-clockwise
+	# (x, y) -> (-y, x)
+	var new_x = current_direction.y
+	var new_y = -current_direction.x
+	current_direction = Vector2i(new_x, new_y)
 	_update_facing_rotation()
-	_attempt_move(current_direction)
+	print("Turned left, now facing: %v" % current_direction)
 
-func move_down():
-	current_direction = Vector2i(0, 1)
+func turnBack():
+	"""Turn 180 degrees around"""
+	current_direction = -current_direction
 	_update_facing_rotation()
-	_attempt_move(current_direction)
+	print("Turned around, now facing: %v" % current_direction)
 
 func _update_facing_rotation():
 	"""Rotate sprite to face current direction"""
@@ -81,14 +91,16 @@ func is_front_clear() -> bool:
 func is_left_clear() -> bool:
 	if not grid_manager:
 		return true
-	var left_dir = Vector2i(-current_direction.y, current_direction.x)
+	# Rotate 90° counter-clockwise: (x, y) -> (y, -x)
+	var left_dir = Vector2i(current_direction.y, -current_direction.x)
 	var check_pos = grid_position + left_dir
 	return grid_manager.is_walkable(check_pos)
 
 func is_right_clear() -> bool:
 	if not grid_manager:
 		return true
-	var right_dir = Vector2i(current_direction.y, -current_direction.x)
+	# Rotate 90° clockwise: (x, y) -> (-y, x)
+	var right_dir = Vector2i(-current_direction.y, current_direction.x)
 	var check_pos = grid_position + right_dir
 	return grid_manager.is_walkable(check_pos)
 

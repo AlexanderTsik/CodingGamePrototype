@@ -20,8 +20,8 @@ var all_levels = [
 #........#
 #.......G#
 ##########""",
-		"starter_code": "# Move to the goal\nmoveRight()\nmoveDown()\n",
-		"hint_text": "Use moveRight() and moveDown() to reach the green goal!"
+		"starter_code": "# Move to the goal\nmove()\nturnRight()\nmove()\n",
+		"hint_text": "Use move(), turnRight(), and turnLeft() to reach the green goal!"
 	},
 	
 	# Level 2: For Loops
@@ -40,8 +40,8 @@ var all_levels = [
 #........#
 #.......G#
 ##########""",
-		"starter_code": "# Use a for loop\nfor(i in range(7)) {\n    moveRight()\n}\n",
-		"hint_text": "Instead of typing moveRight() 7 times, use a for loop!"
+		"starter_code": "# Use a for loop\nfor(i in range(7)) {\n    move()\n}\nturnRight()\nmove()\n",
+		"hint_text": "Instead of typing move() 7 times, use a for loop!"
 	},
 	
 	# Level 3: While Loops & Sensing
@@ -60,8 +60,8 @@ var all_levels = [
 ##.......#
 ##......G#
 ##########""",
-		"starter_code": "# Move until blocked\nwhile(frontIsClear()) {\n    moveRight()\n}\nmoveDown()\n",
-		"hint_text": "Use while(frontIsClear()) to move until you hit a wall, then navigate around!"
+		"starter_code": "# Move until blocked\nwhile(frontIsClear()) {\n    move()\n}\nturnRight()\nmove()\n",
+		"hint_text": "Use while(frontIsClear()) to move until you hit a wall, then turn and navigate!"
 	},
 	
 	# Level 4: If-Else
@@ -80,8 +80,8 @@ var all_levels = [
 #....#...#
 #....#..G#
 ##########""",
-		"starter_code": "# Navigate smartly\nif(frontIsClear()) {\n    moveRight()\n} else {\n    moveDown()\n}\n",
-		"hint_text": "Check if you can go right, otherwise go down. Repeat this logic!"
+		"starter_code": "# Navigate smartly\nif(rightIsClear()) {\n    turnRight()\n    move()\n} else {\n    turnRight()\n    move()\n}\n",
+		"hint_text": "Check if you can turn right and move, otherwise find another path!"
 	},
 	
 	# Level 5: Hazards
@@ -120,8 +120,8 @@ var all_levels = [
 #.....#..#
 #.....#.G#
 ##########""",
-		"starter_code": "# Navigate to goal\nwhile(!goalReached()) {\n    if(frontIsClear()) {\n        moveRight()\n    } else {\n        moveDown()\n    }\n}\n",
-		"hint_text": "Use goalReached() to check if you've won, and frontIsClear() to avoid walls!"
+		"starter_code": "# Navigate to goal\nwhile(!goalReached()) {\n    if(frontIsClear()) {\n        move()\n    } else if(rightIsClear()) {\n        turnRight()\n        move()\n    } else {\n        turnLeft()\n    }\n}\n",
+		"hint_text": "Use goalReached() to check if you've won, and sensor functions to navigate!"
 	},
 	
 	# Level 7: Functions
@@ -140,7 +140,7 @@ var all_levels = [
 #........#
 #.......G#
 ##########""",
-		"starter_code": "# Define a function\nfunction stepOver() {\n    moveRight()\n    moveRight()\n}\n\n# Call it\nstepOver()\n",
+		"starter_code": "# Define a function\nfunction stepOver() {\n    move()\n    move()\n}\n\n# Call it\nstepOver()\n",
 		"hint_text": "Create a function that moves in a pattern, then call it multiple times!"
 	},
 	
