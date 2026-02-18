@@ -1,25 +1,3 @@
-# Godot files not needed for deployment
-.godot/
-.import/
-*.import
-project.godot
-icon.svg
-
-# Development files
-scripts/
-scenes/
-assets/
-addons/
-docs/
-
-# System files
-.DS_Store
-Thumbs.db
-.git/
-.gitignore
-
-# Only deploy exports/web/
+# Only deploy the public/ directory
 /*
-!/exports/
-/exports/*
-!/exports/web/
+!/public/

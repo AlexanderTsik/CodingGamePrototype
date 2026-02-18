@@ -1,7 +1,7 @@
 {
-  "github": {
-    "silent": true
-  },
+  "buildCommand": null,
+  "outputDirectory": "public",
+  "installCommand": null,
   "rewrites": [
     {
       "source": "/(.*)",
