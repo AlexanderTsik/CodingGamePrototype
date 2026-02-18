@@ -37,6 +37,8 @@ mono_crash.*.json
 exports/
 *.exe
 *.pck
+# Exception: Allow web export .pck in public/
+!public/*.pck
 *.zip
 *.apk
 *.aab
