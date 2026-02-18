@@ -54,6 +54,15 @@ func _ready():
 	$HSplitContainer/ToolPanel/VBoxContainer/HazardButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.HAZARD))
 	$HSplitContainer/ToolPanel/VBoxContainer/GoalButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.GOAL))
 	$HSplitContainer/ToolPanel/VBoxContainer/StartButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.START))
+	$HSplitContainer/ToolPanel/VBoxContainer/TeleporterButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.TELEPORTER))
+	$HSplitContainer/ToolPanel/VBoxContainer/WaterButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.WATER))
+	$HSplitContainer/ToolPanel/VBoxContainer/LavaButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.LAVA))
+	$HSplitContainer/ToolPanel/VBoxContainer/IceButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.ICE))
+	$HSplitContainer/ToolPanel/VBoxContainer/SwitchButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.SWITCH))
+	$HSplitContainer/ToolPanel/VBoxContainer/DoorButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.DOOR))
+	$HSplitContainer/ToolPanel/VBoxContainer/KeyButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.KEY))
+	$HSplitContainer/ToolPanel/VBoxContainer/CoinButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.COIN))
+	$HSplitContainer/ToolPanel/VBoxContainer/GemButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.GEM))
 	
 	# Connect action buttons
 	$HSplitContainer/ToolPanel/VBoxContainer/ResizeButton.pressed.connect(_on_resize_pressed)
@@ -282,17 +291,8 @@ func _grid_to_string() -> String:
 	for y in range(grid_height):
 		for x in range(grid_width):
 			var cell_type = grid_data[y][x]
-			match cell_type:
-				CellType.Type.EMPTY:
-					result += "."
-				CellType.Type.WALL:
-					result += "#"
-				CellType.Type.HAZARD:
-					result += "X"
-				CellType.Type.GOAL:
-					result += "G"
-				CellType.Type.START:
-					result += "S"
+			# Use CellType.to_char() to convert all types
+			result += CellType.to_char(cell_type)
 		result += "\n"
 	return result.trim_suffix("\n")
 

@@ -224,3 +224,5 @@ test_scene_minimal.tscn
 *.test.gd
 *.test.tscn
 
+.vercel
+

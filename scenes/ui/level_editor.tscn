@@ -70,6 +70,42 @@ text = "Goal"
 layout_mode = 2
 text = "Start Position"
 
+[node name="TeleporterButton" type="Button" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+text = "Teleporter"
+
+[node name="WaterButton" type="Button" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+text = "Water"
+
+[node name="LavaButton" type="Button" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+text = "Lava"
+
+[node name="IceButton" type="Button" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+text = "Ice"
+
+[node name="SwitchButton" type="Button" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+text = "Switch"
+
+[node name="DoorButton" type="Button" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+text = "Door"
+
+[node name="KeyButton" type="Button" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+text = "Key"
+
+[node name="CoinButton" type="Button" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+text = "Coin"
+
+[node name="GemButton" type="Button" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+text = "Gem"
+
 [node name="HSeparator2" type="HSeparator" parent="HSplitContainer/ToolPanel/VBoxContainer"]
 layout_mode = 2
 

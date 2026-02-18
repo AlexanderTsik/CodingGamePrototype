@@ -6,6 +6,7 @@ const GRID_SIZE = 64
 var start_position: Vector2
 var grid_position: Vector2i  # Current grid coordinates
 var current_direction: Vector2i = Vector2i(0, -1)  # Facing up by default
+var inventory: Array[String] = []  # Player's collected items
 
 # Reference to grid manager
 @export var grid_manager: GridManager
@@ -15,6 +16,8 @@ signal movement_completed
 signal hit_wall
 signal reached_goal
 signal hit_hazard
+signal item_collected(item_name: String)
+signal teleported(from_pos: Vector2i, to_pos: Vector2i)
 
 func _ready():
 	start_position = position
@@ -142,7 +145,12 @@ func _attempt_move(direction: Vector2i):
 	
 	# Check for hazards and goals after move completes
 	await _wait_for_tween()
-	grid_manager.check_player_position(grid_position)
+	
+	# Check if player landed on teleporter
+	if grid_manager.is_teleporter(grid_position):
+		await _handle_teleporter()
+	else:
+		grid_manager.check_player_position(grid_position)
 
 func _do_move(direction: Vector2i):
 	"""Execute the actual movement animation"""
@@ -158,3 +166,65 @@ func _on_movement_finished():
 func _wait_for_tween():
 	"""Helper to wait for tween to complete"""
 	await get_tree().create_timer(0.26).timeout
+
+func _handle_teleporter():
+	"""Handle teleporter logic"""
+	var from_pos = grid_position
+	var target_pos = grid_manager.get_teleporter_target(from_pos)
+	
+	if target_pos != from_pos:
+		print("Player: Teleporting from %v to %v" % [from_pos, target_pos])
+		
+		# Emit signal
+		teleported.emit(from_pos, target_pos)
+		grid_manager.teleported.emit(from_pos, target_pos)
+		
+		# Teleport player
+		grid_position = target_pos
+		position = grid_manager.grid_to_world(target_pos)
+		
+		# Check new position
+		await get_tree().create_timer(0.1).timeout
+		grid_manager.check_player_position(grid_position)
+
+# New sensor functions for cell types
+func is_on_water() -> bool:
+	if not grid_manager:
+		return false
+	return grid_manager.get_cell_at(grid_position) == CellType.Type.WATER
+
+func is_on_ice() -> bool:
+	if not grid_manager:
+		return false
+	return grid_manager.get_cell_at(grid_position) == CellType.Type.ICE
+
+func is_on_teleporter() -> bool:
+	if not grid_manager:
+		return false
+	return grid_manager.get_cell_at(grid_position) == CellType.Type.TELEPORTER
+
+func get_cell_type() -> String:
+	if not grid_manager:
+		return "EMPTY"
+	var cell = grid_manager.get_cell_at(grid_position)
+	return CellType.Type.keys()[cell]
+
+# Inventory functions
+func has_item(item_name: String) -> bool:
+	return item_name in inventory
+
+func add_item(item_name: String):
+	if not item_name in inventory:
+		inventory.append(item_name)
+		item_collected.emit(item_name)
+		print("Player: Collected %s" % item_name)
+
+func use_item(item_name: String) -> bool:
+	if item_name in inventory:
+		inventory.erase(item_name)
+		print("Player: Used %s" % item_name)
+		return true
+	return false
+
+func clear_inventory():
+	inventory.clear()

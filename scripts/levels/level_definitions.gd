@@ -162,6 +162,46 @@ var all_levels = [
 ##########""",
 		"starter_code": "# Solve the maze!\n",
 		"hint_text": "Combine loops, conditions, and sensing to solve this complex maze!"
+	},
+	
+	# Level 9: Teleporter Tutorial
+	{
+		"level_id": 9,
+		"level_name": "Portal Puzzle",
+		"level_description": "Learn to use teleporters",
+		"difficulty": 2,
+		"layout": """##########
+#S.......#
+#........#
+#..T..T..#
+#........#
+#...##...#
+#........#
+#..T..T..#
+#.......G#
+##########""",
+		"starter_code": "# Use teleporters to reach the goal\nmove()\nmove()\nturnRight()\nmove()\nmove()\n# Step on teleporter (T)\nmove()\n",
+		"hint_text": "Teleporters (T) are paired! The first T connects to the second T, and the third T connects to the fourth T."
+	},
+	
+	# Level 10: Complex Teleporter Puzzle
+	{
+		"level_id": 10,
+		"level_name": "Teleporter Maze",
+		"level_description": "Navigate using multiple teleporter pairs",
+		"difficulty": 3,
+		"layout": """##########
+#S.#.....#
+#T.#.###.#
+#..#...#.#
+#.##.T...#
+#....#.#.#
+#.##.#.T.#
+#.T..#...#
+#.######G#
+##########""",
+		"starter_code": "# Navigate the teleporter maze\n",
+		"hint_text": "Plan your path! Each pair of teleporters (T) connects to each other in order of appearance."
 	}
 ]
 
