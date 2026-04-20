@@ -1,3 +1,10 @@
-# Only deploy the public/ directory
-/*
-!/public/
+# Godot source files — not needed for Vercel deployment
+scripts/
+scenes/
+assets/
+.godot/
+export_presets.cfg
+project.godot
+public/
+DEPLOYMENT.md
+docs/
