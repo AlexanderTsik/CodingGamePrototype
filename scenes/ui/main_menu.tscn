@@ -72,6 +72,12 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "🎨 Custom Levels"
 
+[node name="AccountButton" type="Button" parent="CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(300, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "👤 Login / Register"
+
 [node name="HowToPlayButton" type="Button" parent="CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(300, 50)
 layout_mode = 2
@@ -164,3 +170,26 @@ autowrap_mode = 3
 [node name="CloseButton" type="Button" parent="HowToPlayPopup/MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Close"
+
+[node name="UserBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 46.0
+grow_horizontal = 0
+theme_override_constants/separation = 8
+
+[node name="UserLabel" type="Label" parent="UserBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Playing as guest"
+vertical_alignment = 1
+
+[node name="LogoutButton" type="Button" parent="UserBar"]
+layout_mode = 2
+text = "Logout"
+visible = false

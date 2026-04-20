@@ -79,6 +79,12 @@ var player_is_dead: bool = false
 var current_level_id: int = 1
 var level_definitions: Node
 
+# Win / leaderboard popup
+var _win_popup: Panel
+var _win_stats: Label
+var _win_rank_label: Label
+var _win_lb_container: VBoxContainer
+
 # Available commands and keywords for code completion
 var available_commands = ["move()", "turnRight()", "turnLeft()", "turnBack()", "frontIsClear()", "goalReached()", "onHazard()", "leftIsClear()", "rightIsClear()"]
 var available_keywords = ["if", "else", "elif", "for", "while", "do", "function", "return", "in", "range", "and", "or", "not"]
@@ -214,7 +220,10 @@ func _ready():
 	
 	# Setup help button and popup
 	_setup_help_system()
-	
+
+	# Setup win / leaderboard popup
+	_setup_win_popup()
+
 	# Set default example code
 	code_input.text = examples["simple_moves"]
 	
@@ -422,9 +431,10 @@ func _on_stop_button_pressed():
 
 func _on_execution_complete():
 	if is_level_complete:
-		output_label.text = "🎉 Level Complete! Press 'Next Level' to continue!"
-		output_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))  # Green
+		output_label.text = "🎉 Level Complete!"
+		output_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
 		next_level_button.disabled = false
+		_show_win_popup()
 	elif player_is_dead:
 		output_label.text = "💀 You died! Click 'Restart' to try again."
 		output_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.3))  # Orange
@@ -496,6 +506,181 @@ Control Flow:
 if/elif/else, for, while, do-while
 
 Click Run to execute!"""
+
+# ── Win / Leaderboard popup ───────────────────────────────────────────────────
+
+func _setup_win_popup():
+	_win_popup = Panel.new()
+	_win_popup.visible         = false
+	_win_popup.anchor_left     = 0.5
+	_win_popup.anchor_top      = 0.5
+	_win_popup.anchor_right    = 0.5
+	_win_popup.anchor_bottom   = 0.5
+	_win_popup.offset_left     = -240.0
+	_win_popup.offset_top      = -240.0
+	_win_popup.offset_right    = 240.0
+	_win_popup.offset_bottom   = 240.0
+	_win_popup.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_win_popup.grow_vertical   = Control.GROW_DIRECTION_BOTH
+	add_child(_win_popup)
+
+	var margin = MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left",   20)
+	margin.add_theme_constant_override("margin_right",  20)
+	margin.add_theme_constant_override("margin_top",    20)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	_win_popup.add_child(margin)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	margin.add_child(vbox)
+
+	var title = Label.new()
+	title.text = "🎉 Level Complete!"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
+	vbox.add_child(title)
+
+	_win_stats = Label.new()
+	_win_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(_win_stats)
+
+	_win_rank_label = Label.new()
+	_win_rank_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_win_rank_label.add_theme_font_size_override("font_size", 15)
+	vbox.add_child(_win_rank_label)
+
+	vbox.add_child(HSeparator.new())
+
+	var lb_title = Label.new()
+	lb_title.text = "Top Solutions"
+	lb_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lb_title.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	vbox.add_child(lb_title)
+
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0, 180)
+	vbox.add_child(scroll)
+
+	_win_lb_container = VBoxContainer.new()
+	_win_lb_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_win_lb_container)
+
+	var btn_row = HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 12)
+	vbox.add_child(btn_row)
+
+	var retry_btn = Button.new()
+	retry_btn.text = "Play Again"
+	retry_btn.custom_minimum_size = Vector2(110, 36)
+	retry_btn.pressed.connect(func():
+		_win_popup.visible = false
+		load_level(current_level_id)
+	)
+	btn_row.add_child(retry_btn)
+
+	var next_btn = Button.new()
+	next_btn.text = "Next Level →"
+	next_btn.custom_minimum_size = Vector2(110, 36)
+	next_btn.pressed.connect(func():
+		_win_popup.visible = false
+		_on_next_level_button_pressed()
+	)
+	btn_row.add_child(next_btn)
+
+func _show_win_popup():
+	var moves       = player.move_count
+	var code        = code_input.text
+	var code_length = code.replace(" ", "").replace("\n", "").replace("\t", "").length()
+	var level_id    = "builtin_%d" % current_level_id
+
+	_win_stats.text      = "%d moves  ·  %d chars of code" % [moves, code_length]
+	_win_rank_label.text = ""
+	_win_popup.visible   = true
+	_set_lb_status("Submitting solution..." if AuthManager.is_logged_in() else "Loading leaderboard...")
+
+	# Submit first (if logged in), then fetch so the player's entry is already in DB
+	if AuthManager.is_logged_in():
+		var sub_result = await ApiClient.submit_solution(level_id, code, moves, code_length)
+		if sub_result.has("error"):
+			_win_rank_label.text = "Submit failed: %s" % sub_result.get("msg", sub_result["error"])
+			_win_rank_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+		_set_lb_status("Loading leaderboard...")
+	else:
+		_win_rank_label.text = "Log in to save your score!"
+		_win_rank_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.4))
+
+	var entries: Array = await ApiClient.get_leaderboard(level_id)
+	_clear_lb()
+
+	if entries.is_empty():
+		_set_lb_status("No solutions yet — you're first!")
+		return
+
+	_add_lb_row("#", "Player", "Moves", "Code", true, false)
+
+	var my_username = AuthManager.get_username() if AuthManager.is_logged_in() else ""
+	var my_rank     = -1
+
+	for i in entries.size():
+		var e     = entries[i]
+		var prof  = e.get("profiles", null)
+		var uname = prof.get("username", "???") if prof is Dictionary else "???"
+		var is_me = my_username != "" and uname == my_username
+		if is_me:
+			my_rank = i + 1
+		_add_lb_row(str(i + 1), uname,
+				str(e.get("move_count", "?")),
+				str(e.get("code_length", "?")),
+				false, is_me)
+
+	if my_rank > 0:
+		_win_rank_label.text = "Your rank: #%d" % my_rank
+		_win_rank_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+	elif AuthManager.is_logged_in():
+		_win_rank_label.text = "Solution submitted!"
+		_win_rank_label.add_theme_color_override("font_color", Color(0.5, 0.8, 0.5))
+
+func _set_lb_status(msg: String):
+	_clear_lb()
+	var lbl = Label.new()
+	lbl.text = msg
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_win_lb_container.add_child(lbl)
+
+func _clear_lb():
+	for child in _win_lb_container.get_children():
+		child.queue_free()
+
+func _add_lb_row(rank: String, uname: String, moves: String, code_len: String,
+		is_header: bool, is_me: bool):
+	var row = HBoxContainer.new()
+	if is_me:
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.15, 0.4, 0.15, 0.6)
+		row.add_theme_stylebox_override("panel", style)
+
+	var cols   = [rank, uname, moves, code_len]
+	var widths = [28,   0,     52,    52]
+
+	for j in cols.size():
+		var lbl = Label.new()
+		lbl.text = cols[j]
+		lbl.custom_minimum_size = Vector2(widths[j], 0)
+		if widths[j] == 0:
+			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if is_header:
+			lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		elif is_me:
+			lbl.add_theme_color_override("font_color", Color(0.4, 1.0, 0.4))
+		_win_lb_container.add_child(lbl)
+
+	_win_lb_container.add_child(row)
 
 # ============================================
 # Visual Feedback System
@@ -1097,11 +1282,11 @@ move()"""
 	var example2 = Label.new()
 	example2.text = """Example 2: Navigate with Sensors
 while (frontIsClear()) {
-    move()
+	move()
 }
 turnRight()
 while (frontIsClear()) {
-    move()
+	move()
 }"""
 	# Only add font if it exists
 	if ResourceLoader.exists("res://fonts/code_font.tres"):
@@ -1112,10 +1297,10 @@ while (frontIsClear()) {
 	var example3 = Label.new()
 	example3.text = """Example 3: Function with Loop
 function square() {
-    for (i in range(4)) {
-        move()
-        turnRight()
-    }
+	for (i in range(4)) {
+		move()
+		turnRight()
+	}
 }
 
 square()"""

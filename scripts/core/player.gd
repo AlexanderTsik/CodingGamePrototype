@@ -7,6 +7,7 @@ var start_position: Vector2
 var grid_position: Vector2i  # Current grid coordinates
 var current_direction: Vector2i = Vector2i(0, -1)  # Facing up by default
 var inventory: Array[String] = []  # Player's collected items
+var move_count: int = 0
 
 # Reference to grid manager
 @export var grid_manager: GridManager
@@ -32,6 +33,7 @@ func reset_position():
 		position = start_position
 		grid_position = Vector2i(position / GRID_SIZE)
 	current_direction = Vector2i(0, -1)  # Reset to face up
+	move_count = 0
 	_update_facing_rotation()
 
 func move():
@@ -138,8 +140,9 @@ func _attempt_move(direction: Vector2i):
 		hit_wall.emit()
 		print("Hit wall at", target_grid_pos)
 		return
-	
+
 	# Move is valid, execute it
+	move_count += 1
 	grid_position = target_grid_pos
 	_do_move(direction)
 	
