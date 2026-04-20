@@ -1,9 +1,9 @@
 export default function PlayPage() {
   return (
-    <div className="flex flex-col" style={{ height: "calc(100vh - 57px)" }}>
+    <div style={{ width: "100vw", height: "100vh", overflow: "hidden" }}>
       <iframe
         src="/game/CodingGamePrototype.html"
-        className="flex-1 w-full border-0"
+        style={{ width: "100%", height: "100%", border: "none", display: "block" }}
         allow="autoplay; fullscreen"
         title="LediBug Game"
       />

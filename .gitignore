@@ -39,6 +39,7 @@ exports/
 *.pck
 # Exception: Allow web export .pck in public/
 !public/*.pck
+!platform/public/game/*.pck
 *.zip
 *.apk
 *.aab
