@@ -1,42 +1,36 @@
 extends Control
 
 # ── Scene nodes ───────────────────────────────────────────────────────────────
-@onready var account_button  = $CenterContainer/VBoxContainer/AccountButton
-@onready var user_label      = $UserBar/UserLabel
-@onready var logout_button   = $UserBar/LogoutButton
+@onready var account_button  = $CenterContainer/Card/CardMargin/MenuBox/AccountButton
+@onready var user_label      = $UserBar/UserBarInner/UserLabel
+@onready var logout_button   = $UserBar/UserBarInner/LogoutButton
 
-# Auth popup — built programmatically below
+# Auth popup — built programmatically
 var _auth_popup:      Panel
 var _email_input:     LineEdit
 var _password_input:  LineEdit
 var _username_input:  LineEdit
 var _status_label:    Label
 var _submit_button:   Button
-var _mode_label:      Label      # "Login" or "Register"
-var _toggle_mode_btn: Button     # switch between modes
+var _mode_label:      Label
+var _toggle_mode_btn: Button
 var _is_register_mode := false
 
 func _ready():
-	# Standard buttons
-	$CenterContainer/VBoxContainer/StartButton.pressed.connect(_on_start_pressed)
-	$CenterContainer/VBoxContainer/LevelSelectButton.pressed.connect(_on_level_select_pressed)
-	$CenterContainer/VBoxContainer/LevelEditorButton.pressed.connect(_on_level_editor_pressed)
-	$CenterContainer/VBoxContainer/CustomLevelsButton.pressed.connect(_on_custom_levels_pressed)
-	$CenterContainer/VBoxContainer/HowToPlayButton.pressed.connect(_on_how_to_play_pressed)
-	$CenterContainer/VBoxContainer/QuitButton.pressed.connect(_on_quit_pressed)
+	$CenterContainer/Card/CardMargin/MenuBox/StartButton.pressed.connect(_on_start_pressed)
+	$CenterContainer/Card/CardMargin/MenuBox/LevelSelectButton.pressed.connect(_on_level_select_pressed)
+	$CenterContainer/Card/CardMargin/MenuBox/LevelEditorButton.pressed.connect(_on_level_editor_pressed)
+	$CenterContainer/Card/CardMargin/MenuBox/CustomLevelsButton.pressed.connect(_on_custom_levels_pressed)
+	$CenterContainer/Card/CardMargin/MenuBox/HowToPlayButton.pressed.connect(_on_how_to_play_pressed)
+	$CenterContainer/Card/CardMargin/MenuBox/QuitButton.pressed.connect(_on_quit_pressed)
 	$HowToPlayPopup/MarginContainer/VBoxContainer/CloseButton.pressed.connect(_on_close_popup_pressed)
 
-	# Auth buttons
 	account_button.pressed.connect(_on_account_pressed)
 	logout_button.pressed.connect(_on_logout_pressed)
 
-	# Auth popup (built in code so we don't need a separate scene)
 	_build_auth_popup()
-
-	# Reflect any existing session (e.g. after page refresh on web)
 	_refresh_user_bar()
 
-	# Listen for auth state changes
 	AuthManager.logged_in.connect(_on_logged_in)
 	AuthManager.logged_out.connect(_on_logged_out)
 
@@ -67,13 +61,12 @@ func _on_quit_pressed():
 
 func _on_account_pressed():
 	if AuthManager.is_logged_in():
-		# Already logged in — show account info instead
-		_status_label.text = "Logged in as: %s" % AuthManager.get_username()
-		_status_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.4))
+		_status_label.text = "Signed in as  %s" % AuthManager.get_username()
+		_status_label.add_theme_color_override("font_color", Color(0.40, 0.90, 0.55, 1))
 		_auth_popup.visible = true
 		return
-	_set_mode(false)   # default to login
-	_status_label.text = ""
+	_set_mode(false)
+	_status_label.text   = ""
 	_email_input.text    = ""
 	_password_input.text = ""
 	_username_input.text = ""
@@ -103,22 +96,17 @@ func _on_auth_submit():
 		if res.has("error") and not res.has("user"):
 			_show_status(_parse_error(res), false)
 		elif res.has("access_token"):
-			# Email confirmation disabled — logged in immediately
-			# Note: _create_profile inside ApiClient.register already calls set_session,
-			# so this branch only fires if profile creation was skipped.
 			_auth_popup.visible = false
 		elif res.has("user"):
-			# Email confirmation enabled — account created, awaiting confirmation
-			_show_status("Account created! Check your email to confirm before logging in.", true)
+			_show_status("Account created! Check your email to confirm.", true)
 	else:
-		_show_status("Logging in...", true)
+		_show_status("Signing in...", true)
 		_submit_button.disabled = true
 		var res = await ApiClient.login(email, password)
 		_submit_button.disabled = false
 		if res.has("error"):
 			_show_status(_parse_error(res), false)
 		elif res.has("access_token"):
-			# AuthManager.set_session is called inside ApiClient.login → _ensure_profile
 			_auth_popup.visible = false
 
 func _on_toggle_mode():
@@ -129,18 +117,18 @@ func _set_mode(register: bool):
 	if register:
 		_mode_label.text      = "Create Account"
 		_submit_button.text   = "Register"
-		_toggle_mode_btn.text = "Already have an account? Login"
+		_toggle_mode_btn.text = "Already have an account?  Sign in"
 		_username_input.visible = true
 	else:
-		_mode_label.text      = "Login"
-		_submit_button.text   = "Login"
-		_toggle_mode_btn.text = "No account yet? Register"
+		_mode_label.text      = "Sign In"
+		_submit_button.text   = "Sign In"
+		_toggle_mode_btn.text = "No account yet?  Register"
 		_username_input.visible = false
 	_status_label.text = ""
 
 func _show_status(msg: String, ok: bool):
 	_status_label.text = msg
-	var color = Color(0.4, 1.0, 0.4) if ok else Color(1.0, 0.4, 0.4)
+	var color = Color(0.40, 0.90, 0.55, 1) if ok else Color(0.95, 0.38, 0.38, 1)
 	_status_label.add_theme_color_override("font_color", color)
 
 func _parse_error(res: Dictionary) -> String:
@@ -153,111 +141,236 @@ func _parse_error(res: Dictionary) -> String:
 
 func _on_logged_in(_username: String):
 	_refresh_user_bar()
-	account_button.text = "👤 My Account"
+	account_button.text = "My Account"
 
 func _on_logged_out():
 	_refresh_user_bar()
-	account_button.text = "👤 Login / Register"
+	account_button.text = "Login / Register"
 
 func _refresh_user_bar():
 	if AuthManager.is_logged_in():
-		user_label.text      = AuthManager.get_username()
+		user_label.text       = AuthManager.get_username()
+		user_label.add_theme_color_override("font_color", Color(0.78, 0.84, 0.98, 1))
 		logout_button.visible = true
 	else:
-		user_label.text      = "Playing as guest"
+		user_label.text       = "Playing as guest"
+		user_label.add_theme_color_override("font_color", Color(0.50, 0.54, 0.70, 1))
 		logout_button.visible = false
 
 # ── Build auth popup UI ───────────────────────────────────────────────────────
 
 func _build_auth_popup():
-	_auth_popup = Panel.new()
-	_auth_popup.name            = "AuthPopup"
-	_auth_popup.visible         = false
-	_auth_popup.anchors_preset  = Control.PRESET_CENTER
+	_auth_popup         = Panel.new()
+	_auth_popup.name    = "AuthPopup"
+	_auth_popup.visible = false
+
+	# Styled panel background
+	var popup_style = StyleBoxFlat.new()
+	popup_style.bg_color               = Color(0.071, 0.075, 0.110, 1)
+	popup_style.border_width_left      = 1
+	popup_style.border_width_top       = 1
+	popup_style.border_width_right     = 1
+	popup_style.border_width_bottom    = 1
+	popup_style.border_color           = Color(0.196, 0.212, 0.318, 1)
+	popup_style.corner_radius_top_left     = 10
+	popup_style.corner_radius_top_right    = 10
+	popup_style.corner_radius_bottom_right = 10
+	popup_style.corner_radius_bottom_left  = 10
+	popup_style.shadow_color  = Color(0, 0, 0, 0.55)
+	popup_style.shadow_size   = 22
+	popup_style.shadow_offset = Vector2(0, 8)
+	_auth_popup.add_theme_stylebox_override("panel", popup_style)
+
 	_auth_popup.anchor_left     = 0.5
 	_auth_popup.anchor_top      = 0.5
 	_auth_popup.anchor_right    = 0.5
 	_auth_popup.anchor_bottom   = 0.5
-	_auth_popup.offset_left     = -200.0
-	_auth_popup.offset_top      = -240.0
-	_auth_popup.offset_right    = 200.0
-	_auth_popup.offset_bottom   = 240.0
+	_auth_popup.offset_left     = -210.0
+	_auth_popup.offset_top      = -250.0
+	_auth_popup.offset_right    =  210.0
+	_auth_popup.offset_bottom   =  250.0
 	_auth_popup.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_auth_popup.grow_vertical   = Control.GROW_DIRECTION_BOTH
 	add_child(_auth_popup)
 
 	var margin = MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left",   24)
-	margin.add_theme_constant_override("margin_right",  24)
-	margin.add_theme_constant_override("margin_top",    24)
-	margin.add_theme_constant_override("margin_bottom", 24)
+	margin.add_theme_constant_override("margin_left",   28)
+	margin.add_theme_constant_override("margin_right",  28)
+	margin.add_theme_constant_override("margin_top",    28)
+	margin.add_theme_constant_override("margin_bottom", 28)
 	_auth_popup.add_child(margin)
 
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
+	vbox.add_theme_constant_override("separation", 10)
 	margin.add_child(vbox)
 
 	# Title
 	_mode_label = Label.new()
 	_mode_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_mode_label.add_theme_font_size_override("font_size", 22)
+	_mode_label.add_theme_font_size_override("font_size", 20)
+	_mode_label.add_theme_color_override("font_color", Color(0.78, 0.84, 0.98, 1))
 	vbox.add_child(_mode_label)
+
+	vbox.add_child(HSeparator.new())
+
+	# Field style helper
+	var _make_field_style = func() -> StyleBoxFlat:
+		var s = StyleBoxFlat.new()
+		s.bg_color            = Color(0.047, 0.051, 0.075, 1)
+		s.border_width_left   = 1
+		s.border_width_top    = 1
+		s.border_width_right  = 1
+		s.border_width_bottom = 1
+		s.border_color        = Color(0.196, 0.212, 0.318, 1)
+		s.corner_radius_top_left     = 5
+		s.corner_radius_top_right    = 5
+		s.corner_radius_bottom_right = 5
+		s.corner_radius_bottom_left  = 5
+		s.content_margin_left   = 8.0
+		s.content_margin_right  = 8.0
+		s.content_margin_top    = 6.0
+		s.content_margin_bottom = 6.0
+		return s
 
 	# Email
 	var email_lbl = Label.new()
 	email_lbl.text = "Email"
+	email_lbl.add_theme_font_size_override("font_size", 13)
+	email_lbl.add_theme_color_override("font_color", Color(0.50, 0.54, 0.70, 1))
 	vbox.add_child(email_lbl)
 
 	_email_input = LineEdit.new()
 	_email_input.placeholder_text    = "you@example.com"
 	_email_input.custom_minimum_size = Vector2(0, 36)
+	_email_input.add_theme_stylebox_override("normal", _make_field_style.call())
 	vbox.add_child(_email_input)
 
 	# Username (register only)
 	var uname_lbl = Label.new()
 	uname_lbl.text = "Username"
+	uname_lbl.add_theme_font_size_override("font_size", 13)
+	uname_lbl.add_theme_color_override("font_color", Color(0.50, 0.54, 0.70, 1))
 	vbox.add_child(uname_lbl)
 
 	_username_input = LineEdit.new()
 	_username_input.placeholder_text    = "Choose a username"
 	_username_input.custom_minimum_size = Vector2(0, 36)
+	_username_input.add_theme_stylebox_override("normal", _make_field_style.call())
 	vbox.add_child(_username_input)
 
 	# Password
 	var pw_lbl = Label.new()
 	pw_lbl.text = "Password"
+	pw_lbl.add_theme_font_size_override("font_size", 13)
+	pw_lbl.add_theme_color_override("font_color", Color(0.50, 0.54, 0.70, 1))
 	vbox.add_child(pw_lbl)
 
 	_password_input = LineEdit.new()
 	_password_input.placeholder_text    = "Password"
 	_password_input.secret              = true
 	_password_input.custom_minimum_size = Vector2(0, 36)
+	_password_input.add_theme_stylebox_override("normal", _make_field_style.call())
 	_password_input.text_submitted.connect(func(_t): _on_auth_submit())
 	vbox.add_child(_password_input)
 
 	# Status label
 	_status_label = Label.new()
-	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status_label.custom_minimum_size = Vector2(0, 36)
+	_status_label.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
+	_status_label.custom_minimum_size  = Vector2(0, 32)
+	_status_label.add_theme_font_size_override("font_size", 13)
 	vbox.add_child(_status_label)
+
+	# Primary button style
+	var _btn_primary_style = func() -> StyleBoxFlat:
+		var s = StyleBoxFlat.new()
+		s.bg_color                   = Color(0.082, 0.467, 0.224, 1)
+		s.corner_radius_top_left     = 6
+		s.corner_radius_top_right    = 6
+		s.corner_radius_bottom_right = 6
+		s.corner_radius_bottom_left  = 6
+		s.content_margin_left   = 12.0
+		s.content_margin_right  = 12.0
+		s.content_margin_top    = 6.0
+		s.content_margin_bottom = 6.0
+		return s
+
+	var _btn_primary_hover = func() -> StyleBoxFlat:
+		var s = StyleBoxFlat.new()
+		s.bg_color                   = Color(0.106, 0.588, 0.282, 1)
+		s.corner_radius_top_left     = 6
+		s.corner_radius_top_right    = 6
+		s.corner_radius_bottom_right = 6
+		s.corner_radius_bottom_left  = 6
+		s.content_margin_left   = 12.0
+		s.content_margin_right  = 12.0
+		s.content_margin_top    = 6.0
+		s.content_margin_bottom = 6.0
+		return s
+
+	var _btn_flat_style = func() -> StyleBoxFlat:
+		var s = StyleBoxFlat.new()
+		s.bg_color                   = Color(0.102, 0.108, 0.157, 1)
+		s.border_width_left          = 1
+		s.border_width_top           = 1
+		s.border_width_right         = 1
+		s.border_width_bottom        = 1
+		s.border_color               = Color(0.196, 0.212, 0.318, 1)
+		s.corner_radius_top_left     = 6
+		s.corner_radius_top_right    = 6
+		s.corner_radius_bottom_right = 6
+		s.corner_radius_bottom_left  = 6
+		s.content_margin_left   = 12.0
+		s.content_margin_right  = 12.0
+		s.content_margin_top    = 6.0
+		s.content_margin_bottom = 6.0
+		return s
+
+	var _btn_flat_hover = func() -> StyleBoxFlat:
+		var s = StyleBoxFlat.new()
+		s.bg_color                   = Color(0.145, 0.157, 0.231, 1)
+		s.border_width_left          = 1
+		s.border_width_top           = 1
+		s.border_width_right         = 1
+		s.border_width_bottom        = 1
+		s.border_color               = Color(0.290, 0.318, 0.510, 1)
+		s.corner_radius_top_left     = 6
+		s.corner_radius_top_right    = 6
+		s.corner_radius_bottom_right = 6
+		s.corner_radius_bottom_left  = 6
+		s.content_margin_left   = 12.0
+		s.content_margin_right  = 12.0
+		s.content_margin_top    = 6.0
+		s.content_margin_bottom = 6.0
+		return s
 
 	# Submit button
 	_submit_button = Button.new()
-	_submit_button.custom_minimum_size = Vector2(0, 40)
+	_submit_button.custom_minimum_size = Vector2(0, 42)
 	_submit_button.add_theme_font_size_override("font_size", 16)
+	_submit_button.add_theme_stylebox_override("normal",  _btn_primary_style.call())
+	_submit_button.add_theme_stylebox_override("hover",   _btn_primary_hover.call())
+	_submit_button.add_theme_stylebox_override("pressed", _btn_primary_hover.call())
 	_submit_button.pressed.connect(_on_auth_submit)
 	vbox.add_child(_submit_button)
 
-	# Toggle mode (login ↔ register)
+	# Toggle mode
 	_toggle_mode_btn = Button.new()
-	_toggle_mode_btn.flat = true
+	_toggle_mode_btn.add_theme_font_size_override("font_size", 13)
+	_toggle_mode_btn.add_theme_color_override("font_color",       Color(0.42, 0.62, 0.95, 1))
+	_toggle_mode_btn.add_theme_color_override("font_hover_color", Color(0.60, 0.78, 1.00, 1))
+	_toggle_mode_btn.add_theme_stylebox_override("normal",  StyleBoxEmpty.new())
+	_toggle_mode_btn.add_theme_stylebox_override("hover",   StyleBoxEmpty.new())
+	_toggle_mode_btn.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	_toggle_mode_btn.pressed.connect(_on_toggle_mode)
 	vbox.add_child(_toggle_mode_btn)
 
 	# Cancel
 	var cancel_btn = Button.new()
 	cancel_btn.text = "Cancel"
+	cancel_btn.add_theme_stylebox_override("normal",  _btn_flat_style.call())
+	cancel_btn.add_theme_stylebox_override("hover",   _btn_flat_hover.call())
+	cancel_btn.add_theme_stylebox_override("pressed", _btn_flat_hover.call())
 	cancel_btn.pressed.connect(func(): _auth_popup.visible = false)
 	vbox.add_child(cancel_btn)
 

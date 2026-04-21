@@ -2,15 +2,17 @@ extends CharacterBody2D
 
 # Note: GridManager is auto-loaded via class_name
 
-const GRID_SIZE = 64
+const SPRITE_NATURAL_SIZE := 320.0  # texture px at scale 1.0
+
 var start_position: Vector2
-var grid_position: Vector2i  # Current grid coordinates
-var current_direction: Vector2i = Vector2i(0, -1)  # Facing up by default
-var inventory: Array[String] = []  # Player's collected items
+var grid_position: Vector2i
+var current_direction: Vector2i = Vector2i(0, -1)
+var inventory: Array[String] = []
 var move_count: int = 0
 
-# Reference to grid manager
 @export var grid_manager: GridManager
+
+var _last_tile_size: int = 0
 
 signal movement_started
 signal movement_completed
@@ -22,8 +24,14 @@ signal teleported(from_pos: Vector2i, to_pos: Vector2i)
 
 func _ready():
 	start_position = position
-	grid_position = Vector2i(position / GRID_SIZE)
+	if grid_manager:
+		grid_position = Vector2i(position / grid_manager.tile_size)
 	_update_facing_rotation()
+
+func _process(_delta: float):
+	if grid_manager and grid_manager.tile_size != _last_tile_size:
+		_last_tile_size = grid_manager.tile_size
+		_sync_sprite_and_position()
 
 func reset_position():
 	if grid_manager:
@@ -31,10 +39,22 @@ func reset_position():
 		grid_position = grid_manager.start_position
 	else:
 		position = start_position
-		grid_position = Vector2i(position / GRID_SIZE)
-	current_direction = Vector2i(0, -1)  # Reset to face up
+		grid_position = Vector2i(position / max(grid_manager.tile_size if grid_manager else 48, 1))
+	current_direction = Vector2i(0, -1)
 	move_count = 0
 	_update_facing_rotation()
+
+func _sync_sprite_and_position():
+	"""Called whenever tile_size changes — rescale sprite and snap position."""
+	var ts := grid_manager.tile_size
+	var sprite = get_node_or_null("Sprite")
+	if not sprite:
+		sprite = get_node_or_null("Sprite2D")
+	if sprite:
+		var s := ts / SPRITE_NATURAL_SIZE
+		sprite.scale = Vector2(s, s)
+	# Snap position to correct world coords for current grid_position
+	position = grid_manager.grid_to_world(grid_position)
 
 func move():
 	"""Move one cell forward in the current facing direction"""
@@ -159,7 +179,8 @@ func _do_move(direction: Vector2i):
 	"""Execute the actual movement animation"""
 	movement_started.emit()
 	var tween = create_tween()
-	var target_pos = position + Vector2(direction * GRID_SIZE)
+	var ts := grid_manager.tile_size if grid_manager else 48
+	var target_pos = position + Vector2(direction * ts)
 	tween.tween_property(self, "position", target_pos, 0.25)
 	tween.finished.connect(_on_movement_finished)
 

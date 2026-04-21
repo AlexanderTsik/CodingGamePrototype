@@ -8,8 +8,8 @@ extends Control
 @onready var restart_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/RestartButton
 @onready var next_level_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/NextLevelButton
 @onready var menu_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/MenuButton
-@onready var output_label = $HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputLabel
-@onready var title_label = $HSplitContainer/CodePanel/VSplitContainer/TopSection/TitleLabel
+@onready var output_label = $HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputPanel/OutputMargin/OutputLabel
+@onready var title_label = $HSplitContainer/CodePanel/VSplitContainer/TopSection/TitleBar/TitleLabel
 @onready var player = $HSplitContainer/GamePanel/GridBackground/Level/Player
 @onready var code_executor = $CodeExecutor
 
@@ -226,8 +226,11 @@ func _ready():
 
 	# Set default example code
 	code_input.text = examples["simple_moves"]
-	
+
 	_update_help_text()
+
+	# Apply theme so all programmatically-added buttons get the right look
+	_apply_theme()
 	
 	# Load selected level (from level select) or default to level 1
 	await get_tree().process_frame
@@ -388,7 +391,8 @@ func _on_run_button_pressed():
 	execution_start_time = Time.get_ticks_msec()
 	
 	var code = code_input.text
-	output_label.text = "Executing..."
+	output_label.text = "Running..."
+	output_label.add_theme_color_override("font_color", Color(0.647, 0.671, 0.780, 1))
 	run_button.disabled = true
 	debug_button.disabled = true
 	stop_button.disabled = false
@@ -414,6 +418,7 @@ func _on_debug_button_pressed():
 	
 	var code = code_input.text
 	output_label.text = "Debugging..."
+	output_label.add_theme_color_override("font_color", Color(0.88, 0.70, 0.35, 1))
 	run_button.disabled = true
 	debug_button.disabled = true
 	stop_button.disabled = false
@@ -423,7 +428,8 @@ func _on_debug_button_pressed():
 func _on_stop_button_pressed():
 	"""Stop the currently executing code"""
 	code_executor.stop_execution()
-	output_label.text = "❌ Execution stopped"
+	output_label.text = "Stopped."
+	output_label.add_theme_color_override("font_color", Color(0.647, 0.671, 0.780, 1))
 	run_button.disabled = false
 	debug_button.disabled = false
 	stop_button.disabled = true
@@ -431,17 +437,16 @@ func _on_stop_button_pressed():
 
 func _on_execution_complete():
 	if is_level_complete:
-		output_label.text = "🎉 Level Complete!"
-		output_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
+		output_label.text = "Level complete!"
+		output_label.add_theme_color_override("font_color", Color(0.40, 0.90, 0.55, 1))
 		next_level_button.disabled = false
 		_show_win_popup()
 	elif player_is_dead:
-		output_label.text = "💀 You died! Click 'Restart' to try again."
-		output_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.3))  # Orange
+		output_label.text = "You died — press Restart to try again."
+		output_label.add_theme_color_override("font_color", Color(0.98, 0.55, 0.35, 1))
 	else:
-		output_label.text = "Execution complete! ✓"
-		# Reset to theme color
-		output_label.remove_theme_color_override("font_color")
+		output_label.text = "Done."
+		output_label.add_theme_color_override("font_color", Color(0.647, 0.671, 0.780, 1))
 	run_button.disabled = false
 	debug_button.disabled = false
 	stop_button.disabled = true
@@ -461,7 +466,8 @@ func _on_next_level_button_pressed():
 	if next_level <= level_definitions.get_level_count():
 		load_level(next_level)
 	else:
-		output_label.text = "🎉 Congratulations! You completed all levels!"
+		output_label.text = "All levels complete — well done!"
+		output_label.add_theme_color_override("font_color", Color(0.40, 0.90, 0.55, 1))
 		next_level_button.disabled = true
 
 func _on_menu_button_pressed():
@@ -470,9 +476,8 @@ func _on_menu_button_pressed():
 
 func _on_execution_error(error_msg: String):
 	"""Handle execution errors with proper formatting"""
-	# Add red error styling
-	output_label.text = "❌ Error: " + error_msg
-	output_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))  # Red
+	output_label.text = "Error: " + error_msg
+	output_label.add_theme_color_override("font_color", Color(0.95, 0.38, 0.38, 1))
 	
 	run_button.disabled = false
 	debug_button.disabled = false
@@ -511,6 +516,21 @@ Click Run to execute!"""
 
 func _setup_win_popup():
 	_win_popup = Panel.new()
+	var popup_style = StyleBoxFlat.new()
+	popup_style.bg_color = Color(0.11, 0.12, 0.17, 0.97)
+	popup_style.border_width_left   = 2
+	popup_style.border_width_top    = 2
+	popup_style.border_width_right  = 2
+	popup_style.border_width_bottom = 2
+	popup_style.border_color = Color(0.25, 0.85, 0.45, 1.0)
+	popup_style.corner_radius_top_left     = 12
+	popup_style.corner_radius_top_right    = 12
+	popup_style.corner_radius_bottom_right = 12
+	popup_style.corner_radius_bottom_left  = 12
+	popup_style.shadow_color  = Color(0, 0, 0, 0.55)
+	popup_style.shadow_size   = 12
+	popup_style.shadow_offset = Vector2(0, 4)
+	_win_popup.add_theme_stylebox_override("panel", popup_style)
 	_win_popup.visible         = false
 	_win_popup.anchor_left     = 0.5
 	_win_popup.anchor_top      = 0.5
@@ -1765,65 +1785,55 @@ func _on_theme_toggle_pressed():
 func _apply_theme():
 	"""Apply the current theme (dark or light) to all UI elements"""
 	var code_panel = get_node("HSplitContainer/CodePanel")
-	
+
 	if is_dark_mode:
-		# Dark theme colors
-		theme_toggle_button.text = "☀️ Light"
-		
+		theme_toggle_button.text = "Light"
+
 		# Code panel background
 		var panel_style = StyleBoxFlat.new()
-		panel_style.bg_color = Color(0.15, 0.15, 0.2, 1)
-		panel_style.border_width_left = 2
-		panel_style.border_width_top = 2
-		panel_style.border_width_right = 2
-		panel_style.border_width_bottom = 2
-		panel_style.border_color = Color(0.3, 0.3, 0.35, 1)
-		panel_style.corner_radius_top_left = 6
-		panel_style.corner_radius_top_right = 6
-		panel_style.corner_radius_bottom_right = 6
-		panel_style.corner_radius_bottom_left = 6
+		panel_style.bg_color          = Color(0.075, 0.082, 0.118, 1)
+		panel_style.border_width_right = 1
+		panel_style.border_color       = Color(0.18, 0.20, 0.30, 1)
 		code_panel.add_theme_stylebox_override("panel", panel_style)
-		
-		# Code editor colors
-		code_input.add_theme_color_override("background_color", Color(0.12, 0.12, 0.15, 1))
-		code_input.add_theme_color_override("font_color", Color(0.83, 0.83, 0.83, 1))
-		code_input.add_theme_color_override("current_line_color", Color(0.2, 0.2, 0.25, 1))
-		code_input.add_theme_color_override("caret_color", Color(1, 1, 1, 1))
-		code_input.add_theme_color_override("line_number_color", Color(0.5, 0.5, 0.55, 1))
-		
-		# Title and output labels
-		title_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1))
-		output_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1))
-		
+
+		# Code editor
+		code_input.add_theme_color_override("background_color",   Color(0.063, 0.067, 0.098, 1))
+		code_input.add_theme_color_override("font_color",          Color(0.875, 0.882, 0.957, 1))
+		code_input.add_theme_color_override("current_line_color",  Color(0.133, 0.141, 0.208, 1))
+		code_input.add_theme_color_override("caret_color",         Color(0.388, 0.898, 0.588, 1))
+		code_input.add_theme_color_override("line_number_color",   Color(0.357, 0.388, 0.510, 1))
+		code_input.add_theme_color_override("selection_color",     Color(0.173, 0.275, 0.494, 0.8))
+
+		# Title
+		title_label.add_theme_color_override("font_color", Color(0.78, 0.84, 0.98, 1))
+
+		# Output console (only clear color; panel bg is set in scene)
+		output_label.add_theme_color_override("font_color", Color(0.647, 0.671, 0.780, 1))
+
 	else:
-		# Light theme colors
-		theme_toggle_button.text = "🌙 Dark"
-		
+		theme_toggle_button.text = "Dark"
+
 		# Code panel background
 		var panel_style = StyleBoxFlat.new()
-		panel_style.bg_color = Color(0.95, 0.95, 0.97, 1)
-		panel_style.border_width_left = 2
-		panel_style.border_width_top = 2
-		panel_style.border_width_right = 2
-		panel_style.border_width_bottom = 2
-		panel_style.border_color = Color(0.7, 0.7, 0.75, 1)
-		panel_style.corner_radius_top_left = 6
-		panel_style.corner_radius_top_right = 6
-		panel_style.corner_radius_bottom_right = 6
-		panel_style.corner_radius_bottom_left = 6
+		panel_style.bg_color           = Color(0.96, 0.96, 0.98, 1)
+		panel_style.border_width_right = 1
+		panel_style.border_color       = Color(0.72, 0.72, 0.78, 1)
 		code_panel.add_theme_stylebox_override("panel", panel_style)
-		
-		# Code editor colors
-		code_input.add_theme_color_override("background_color", Color(1, 1, 1, 1))
-		code_input.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1, 1))
-		code_input.add_theme_color_override("current_line_color", Color(0.95, 0.95, 0.97, 1))
-		code_input.add_theme_color_override("caret_color", Color(0, 0, 0, 1))
-		code_input.add_theme_color_override("line_number_color", Color(0.5, 0.5, 0.5, 1))
-		
-		# Title and output labels
-		title_label.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1, 1))
-		output_label.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1, 1))
-	
+
+		# Code editor
+		code_input.add_theme_color_override("background_color",  Color(1.0, 1.0, 1.0, 1))
+		code_input.add_theme_color_override("font_color",         Color(0.12, 0.12, 0.14, 1))
+		code_input.add_theme_color_override("current_line_color", Color(0.94, 0.95, 0.98, 1))
+		code_input.add_theme_color_override("caret_color",        Color(0.10, 0.50, 0.30, 1))
+		code_input.add_theme_color_override("line_number_color",  Color(0.50, 0.52, 0.58, 1))
+		code_input.add_theme_color_override("selection_color",    Color(0.71, 0.83, 1.00, 0.8))
+
+		# Title
+		title_label.add_theme_color_override("font_color", Color(0.14, 0.16, 0.26, 1))
+
+		# Output console
+		output_label.add_theme_color_override("font_color", Color(0.20, 0.22, 0.32, 1))
+
 	# Reapply syntax highlighting with theme colors
 	_setup_syntax_highlighting()
 
@@ -1840,21 +1850,21 @@ func _setup_syntax_highlighting():
 	var symbol_color: Color
 	
 	if is_dark_mode:
-		# Dark theme - BRIGHT colors on dark background
-		keyword_color = Color(1.0, 0.4, 1.0)      # Bright magenta for if/for/while
-		function_color = Color(0.3, 0.9, 1.0)     # Bright cyan for move()/turn()
-		string_color = Color(0.9, 1.0, 0.4)       # Bright yellow for strings
-		number_color = Color(1.0, 0.7, 0.3)       # Bright orange for numbers
-		comment_color = Color(0.5, 0.7, 0.5)      # Gray-green for comments
-		symbol_color = Color(0.9, 0.9, 0.9)       # Light gray for brackets/symbols
+		# Dark — Catppuccin-inspired
+		keyword_color  = Color(0.82, 0.38, 0.72, 1.0)  # Mauve/pink  — if/for/while
+		function_color = Color(0.33, 0.80, 0.98, 1.0)  # Sky blue    — move/turn
+		string_color   = Color(0.65, 0.87, 0.40, 1.0)  # Green       — strings
+		number_color   = Color(0.98, 0.73, 0.42, 1.0)  # Peach       — numbers
+		comment_color  = Color(0.35, 0.40, 0.52, 1.0)  # Muted blue  — comments
+		symbol_color   = Color(0.72, 0.74, 0.88, 1.0)  # Lavender    — symbols
 	else:
-		# Light theme - DARK colors on white background
-		keyword_color = Color(0.5, 0.0, 0.7)      # Dark purple
-		function_color = Color(0.0, 0.3, 0.7)     # Dark blue
-		string_color = Color(0.3, 0.5, 0.0)       # Dark olive green
-		number_color = Color(0.7, 0.3, 0.0)       # Dark orange/brown
-		comment_color = Color(0.4, 0.4, 0.4)      # Dark gray
-		symbol_color = Color(0.3, 0.3, 0.3)       # Dark gray for brackets/symbols
+		# Light — VS Code Light-inspired
+		keyword_color  = Color(0.53, 0.07, 0.62, 1.0)  # Purple
+		function_color = Color(0.00, 0.33, 0.72, 1.0)  # Dark blue
+		string_color   = Color(0.18, 0.47, 0.08, 1.0)  # Forest green
+		number_color   = Color(0.62, 0.26, 0.00, 1.0)  # Dark orange
+		comment_color  = Color(0.38, 0.42, 0.46, 1.0)  # Steel gray
+		symbol_color   = Color(0.24, 0.26, 0.30, 1.0)  # Near-black
 	
 	# Control flow keywords (purple)
 	syntax_highlighter.add_keyword_color("if", keyword_color)

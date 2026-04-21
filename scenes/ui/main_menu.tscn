@@ -1,6 +1,135 @@
-[gd_scene load_steps=2 format=3 uid="uid://main_menu_scene"]
+[gd_scene load_steps=12 format=3 uid="uid://main_menu_scene"]
 
 [ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_menu"]
+[ext_resource type="Script" path="res://scripts/ui/menu_background.gd" id="2_bg"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+bg_color = Color(0.047, 0.055, 0.090, 0.93)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.48, 0.28, 0.70)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 24
+shadow_offset = Vector2(0, 8)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+bg_color = Color(0.063, 0.075, 0.118, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.165, 0.196, 0.306, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.071, 0.110, 0.082, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.58, 0.32, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_primary"]
+bg_color = Color(0.075, 0.455, 0.216, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_primary_hover"]
+bg_color = Color(0.098, 0.576, 0.271, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_quit"]
+bg_color = Color(0.145, 0.063, 0.039, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.306, 0.110, 0.078, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_quit_hover"]
+bg_color = Color(0.576, 0.129, 0.082, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.780, 0.176, 0.110, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup"]
+bg_color = Color(0.039, 0.047, 0.082, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.48, 0.28, 0.70)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.60)
+shadow_size = 24
+shadow_offset = Vector2(0, 8)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_userbar"]
+bg_color = Color(0.039, 0.047, 0.082, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.16, 0.42, 0.25, 0.65)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -11,14 +140,14 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_menu")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.1, 0.15, 0.2, 1)
+script = ExtResource("2_bg")
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 1
@@ -28,67 +157,121 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+[node name="Card" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
-theme_override_constants/separation = 20
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="TitleLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="CardMargin" type="MarginContainer" parent="CenterContainer/Card"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "🐞 LediBug"
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_top = 36
+theme_override_constants/margin_bottom = 32
+
+[node name="MenuBox" type="VBoxContainer" parent="CenterContainer/Card/CardMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TitleRow" type="HBoxContainer" parent="CenterContainer/Card/CardMargin/MenuBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="TitleLedi" type="Label" parent="CenterContainer/Card/CardMargin/MenuBox/TitleRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 46
+theme_override_colors/font_color = Color(0.94, 0.76, 0.26, 1)
+text = "Ledi"
+
+[node name="TitleBug" type="Label" parent="CenterContainer/Card/CardMargin/MenuBox/TitleRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 46
+theme_override_colors/font_color = Color(0.42, 0.90, 0.52, 1)
+text = "Bug"
+
+[node name="SubtitleLabel" type="Label" parent="CenterContainer/Card/CardMargin/MenuBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.32, 0.55, 0.38, 1)
+text = "Learn programming through puzzles"
 horizontal_alignment = 1
 
-[node name="SubtitleLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="Spacer1" type="Control" parent="CenterContainer/Card/CardMargin/MenuBox"]
+custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "Learn to Code!"
-horizontal_alignment = 1
 
-[node name="Spacer1" type="Control" parent="CenterContainer/VBoxContainer"]
+[node name="StartButton" type="Button" parent="CenterContainer/Card/CardMargin/MenuBox"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_primary")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_primary_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_primary_hover")
+text = "Play"
+
+[node name="LevelSelectButton" type="Button" parent="CenterContainer/Card/CardMargin/MenuBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_hover")
+text = "Level Select"
+
+[node name="LevelEditorButton" type="Button" parent="CenterContainer/Card/CardMargin/MenuBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_hover")
+text = "Level Editor"
+
+[node name="CustomLevelsButton" type="Button" parent="CenterContainer/Card/CardMargin/MenuBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_hover")
+text = "Custom Levels"
+
+[node name="AccountButton" type="Button" parent="CenterContainer/Card/CardMargin/MenuBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_hover")
+text = "Login / Register"
+
+[node name="HowToPlayButton" type="Button" parent="CenterContainer/Card/CardMargin/MenuBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_hover")
+text = "How to Play"
+
+[node name="QuitSpacer" type="Control" parent="CenterContainer/Card/CardMargin/MenuBox"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="QuitSep" type="HSeparator" parent="CenterContainer/Card/CardMargin/MenuBox"]
+layout_mode = 2
+theme_override_colors/separator = Color(0.18, 0.42, 0.25, 0.50)
+
+[node name="QuitButton" type="Button" parent="CenterContainer/Card/CardMargin/MenuBox"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-
-[node name="StartButton" type="Button" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(300, 50)
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "▶ Start Game"
-
-[node name="LevelSelectButton" type="Button" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(300, 50)
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "📚 Level Select"
-
-[node name="LevelEditorButton" type="Button" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(300, 50)
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "✎ Level Editor"
-
-[node name="CustomLevelsButton" type="Button" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(300, 50)
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "🎨 Custom Levels"
-
-[node name="AccountButton" type="Button" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(300, 50)
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "👤 Login / Register"
-
-[node name="HowToPlayButton" type="Button" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(300, 50)
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "❓ How to Play"
-
-[node name="QuitButton" type="Button" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(300, 50)
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "✖ Quit"
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_quit")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_quit_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_quit_hover")
+theme_override_colors/font_color = Color(0.72, 0.40, 0.36, 1)
+theme_override_colors/font_hover_color = Color(1.0, 0.80, 0.78, 1)
+text = "Quit"
 
 [node name="HowToPlayPopup" type="Panel" parent="."]
 visible = false
@@ -98,12 +281,13 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -350.0
-offset_top = -300.0
-offset_right = 350.0
-offset_bottom = 300.0
+offset_left = -340.0
+offset_top = -290.0
+offset_right = 340.0
+offset_bottom = 290.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_popup")
 
 [node name="MarginContainer" type="MarginContainer" parent="HowToPlayPopup"]
 layout_mode = 1
@@ -112,18 +296,19 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 20
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
 
 [node name="VBoxContainer" type="VBoxContainer" parent="HowToPlayPopup/MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 12
 
 [node name="TitleLabel" type="Label" parent="HowToPlayPopup/MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.42, 0.90, 0.52, 1)
 text = "How to Play"
 horizontal_alignment = 1
 
@@ -135,61 +320,75 @@ horizontal_scroll_mode = 0
 [node name="InstructionsLabel" type="Label" parent="HowToPlayPopup/MarginContainer/VBoxContainer/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "🐞 Control the ladybug with code!
+theme_override_colors/font_color = Color(0.55, 0.68, 0.60, 1)
+theme_override_font_sizes/font_size = 13
+text = "Guide the ladybug to the green goal tile by writing code.
 
-📝 Movement Commands:
-• move() - Move forward one cell
-• turnRight() - Turn 90° clockwise
-• turnLeft() - Turn 90° counter-clockwise
-• turnBack() - Turn 180° around
+Movement:
+  move()       — move one cell forward
+  turnRight()  — turn 90° clockwise
+  turnLeft()   — turn 90° counter-clockwise
+  turnBack()   — turn 180°
 
-🔍 Sensors:
-• frontIsClear() - Check if front is walkable
-• leftIsClear() - Check if left is walkable
-• rightIsClear() - Check if right is walkable
-• goalReached() - Check if at goal
-• onHazard() - Check if on hazard
+Sensors:
+  frontIsClear()   — true if the front cell is walkable
+  leftIsClear()    — true if the left cell is walkable
+  rightIsClear()   — true if the right cell is walkable
+  goalReached()    — true if standing on the goal
+  onHazard()       — true if standing on a hazard
 
-🔄 Control Flow:
-• if/elif/else - Conditional execution
-• for loops - Repeat with counter
-• while loops - Repeat while condition true
-• function - Define reusable code
+Control flow:
+  if (condition) { }
+  for (i in range(n)) { }
+  while (condition) { }
+  function name() { }
 
-🎯 Goal: Reach the green goal tile!
-⚠️ Avoid red hazards - they're deadly!
+Goal tile is green.  Hazard tiles are red — avoid them!
 
-💡 Example:
-while (frontIsClear()) {
-    move()
-}
-turnRight()
-move()"
+Example:
+  while (frontIsClear()) {
+      move()
+  }
+  turnRight()
+  move()"
 autowrap_mode = 3
 
 [node name="CloseButton" type="Button" parent="HowToPlayPopup/MarginContainer/VBoxContainer"]
 layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_hover")
 text = "Close"
 
-[node name="UserBar" type="HBoxContainer" parent="."]
+[node name="UserBar" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -260.0
-offset_top = 10.0
-offset_right = -10.0
+offset_left = -220.0
+offset_top = 12.0
+offset_right = -12.0
 offset_bottom = 46.0
 grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_userbar")
+
+[node name="UserBarInner" type="HBoxContainer" parent="UserBar"]
+layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="UserLabel" type="Label" parent="UserBar"]
+[node name="UserLabel" type="Label" parent="UserBar/UserBarInner"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.32, 0.55, 0.38, 1)
+theme_override_font_sizes/font_size = 13
 text = "Playing as guest"
 vertical_alignment = 1
 
-[node name="LogoutButton" type="Button" parent="UserBar"]
+[node name="LogoutButton" type="Button" parent="UserBar/UserBarInner"]
 layout_mode = 2
-text = "Logout"
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_hover")
+text = "Sign out"
 visible = false

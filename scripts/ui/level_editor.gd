@@ -1,3 +1,4 @@
+## Level editor — nature-tech theme applied via _apply_theme().
 extends Control
 
 # Cell types enum reference
@@ -18,14 +19,14 @@ var grid_manager: Node
 var grid_renderer: Control
 
 # UI References
-@onready var grid_background = $HSplitContainer/EditorPanel/CenterContainer/GridBackground
-@onready var save_dialog = $SaveDialog
-@onready var load_dialog = $LoadDialog
-@onready var name_input = $SaveDialog/MarginContainer/VBoxContainer/NameInput
-@onready var hint_input = $SaveDialog/MarginContainer/VBoxContainer/HintInput
-@onready var starter_code_input = $SaveDialog/MarginContainer/VBoxContainer/StarterCodeInput
-@onready var width_spinbox = $HSplitContainer/ToolPanel/VBoxContainer/WidthContainer/WidthSpinBox
-@onready var height_spinbox = $HSplitContainer/ToolPanel/VBoxContainer/HeightContainer/HeightSpinBox
+@onready var grid_background     = $HSplitContainer/EditorPanel/CenterContainer/GridBackground
+@onready var save_dialog         = $SaveDialog
+@onready var load_dialog         = $LoadDialog
+@onready var name_input          = $SaveDialog/MarginContainer/VBoxContainer/NameInput
+@onready var hint_input          = $SaveDialog/MarginContainer/VBoxContainer/HintInput
+@onready var starter_code_input  = $SaveDialog/MarginContainer/VBoxContainer/StarterCodeInput
+@onready var width_spinbox       = $HSplitContainer/ToolPanel/VBoxContainer/WidthContainer/WidthSpinBox
+@onready var height_spinbox      = $HSplitContainer/ToolPanel/VBoxContainer/HeightContainer/HeightSpinBox
 
 # Current level metadata
 var current_level_name = ""
@@ -34,20 +35,20 @@ var current_level_file = ""
 func _ready():
 	# Initialize grid data
 	_initialize_grid()
-	
+
 	# Load grid manager
 	grid_manager = load("res://scripts/core/grid_manager.gd").new()
 	add_child(grid_manager)
-	
+
 	# Create an initial empty layout string and load it
 	var empty_layout = _grid_to_string()
 	grid_manager.load_level_from_string(empty_layout)
-	
+
 	# Set up grid renderer
 	grid_renderer = grid_background
 	grid_renderer.grid_manager = grid_manager
 	grid_renderer.refresh()
-	
+
 	# Connect cell type buttons
 	$HSplitContainer/ToolPanel/VBoxContainer/EmptyButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.EMPTY))
 	$HSplitContainer/ToolPanel/VBoxContainer/WallButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.WALL))
@@ -63,7 +64,7 @@ func _ready():
 	$HSplitContainer/ToolPanel/VBoxContainer/KeyButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.KEY))
 	$HSplitContainer/ToolPanel/VBoxContainer/CoinButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.COIN))
 	$HSplitContainer/ToolPanel/VBoxContainer/GemButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.GEM))
-	
+
 	# Connect action buttons
 	$HSplitContainer/ToolPanel/VBoxContainer/ResizeButton.pressed.connect(_on_resize_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/ClearButton.pressed.connect(_on_clear_pressed)
@@ -71,21 +72,24 @@ func _ready():
 	$HSplitContainer/ToolPanel/VBoxContainer/LoadButton.pressed.connect(_on_load_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/TestButton.pressed.connect(_on_test_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/MenuButton.pressed.connect(_on_menu_pressed)
-	
+
 	# Connect save dialog buttons
 	$SaveDialog/MarginContainer/VBoxContainer/ButtonContainer/ConfirmButton.pressed.connect(_on_save_confirmed)
 	$SaveDialog/MarginContainer/VBoxContainer/ButtonContainer/CancelButton.pressed.connect(_on_save_cancelled)
-	
+
 	# Connect load dialog
 	load_dialog.file_selected.connect(_on_file_selected)
-	
+
 	# Enable mouse input for grid
 	grid_background.gui_input.connect(_on_grid_input)
-	
+
 	# Initialize spinbox values
 	width_spinbox.value = grid_width
 	height_spinbox.value = grid_height
-	
+
+	# Apply visual theme
+	_apply_theme()
+
 	# Check if editing an existing level
 	await get_tree().process_frame
 	if get_tree().root.has_meta("edit_level_path"):
@@ -93,8 +97,131 @@ func _ready():
 		get_tree().root.remove_meta("edit_level_path")
 		_load_level_from_path(file_path)
 
+# ─── Theme ────────────────────────────────────────────────────────────────────
+
+func _apply_theme() -> void:
+	# Shared button styles
+	var s_normal := _make_btn(Color(0.063, 0.075, 0.118, 1), Color(0.165, 0.196, 0.306, 1), 1, 4)
+	var s_hover  := _make_btn(Color(0.071, 0.110, 0.082, 1), Color(0.22,  0.58,  0.32,  1), 1, 4)
+	var s_prim   := _make_btn(Color(0.075, 0.455, 0.216, 1), Color(0, 0, 0, 0),             0, 4)
+	var s_prim_h := _make_btn(Color(0.098, 0.576, 0.271, 1), Color(0, 0, 0, 0),             0, 4)
+	var s_dng    := _make_btn(Color(0.145, 0.063, 0.039, 1), Color(0.306, 0.110, 0.078, 1), 1, 4)
+	var s_dng_h  := _make_btn(Color(0.576, 0.129, 0.082, 1), Color(0.780, 0.176, 0.110, 1), 1, 4)
+
+	# Title
+	var title := $HSplitContainer/ToolPanel/VBoxContainer/TitleLabel as Label
+	title.add_theme_color_override("font_color", Color(0.94, 0.76, 0.26, 1))
+
+	# Section labels
+	var muted := Color(0.42, 0.55, 0.50, 1)
+	for path in [
+		"HSplitContainer/ToolPanel/VBoxContainer/CellTypeLabel",
+		"HSplitContainer/ToolPanel/VBoxContainer/GridSizeLabel",
+		"HSplitContainer/ToolPanel/VBoxContainer/WidthContainer/WidthLabel",
+		"HSplitContainer/ToolPanel/VBoxContainer/HeightContainer/HeightLabel",
+	]:
+		var lbl := get_node(path) as Label
+		if lbl:
+			lbl.add_theme_color_override("font_color", muted)
+
+	# Separators
+	for path in [
+		"HSplitContainer/ToolPanel/VBoxContainer/HSeparator",
+		"HSplitContainer/ToolPanel/VBoxContainer/HSeparator2",
+		"HSplitContainer/ToolPanel/VBoxContainer/HSeparator2a",
+		"HSplitContainer/ToolPanel/VBoxContainer/HSeparator3",
+	]:
+		var sep := get_node(path) as HSeparator
+		if sep:
+			sep.add_theme_color_override("separator", Color(0.18, 0.42, 0.25, 0.40))
+
+	# Cell type buttons — color-coded left-border indicator per type
+	var cell_btns := {
+		"EmptyButton":      Color(0.32, 0.38, 0.48, 1),
+		"WallButton":       Color(0.42, 0.46, 0.58, 1),
+		"HazardButton":     Color(0.82, 0.22, 0.22, 1),
+		"GoalButton":       Color(0.22, 0.74, 0.36, 1),
+		"StartButton":      Color(0.90, 0.70, 0.15, 1),
+		"TeleporterButton": Color(0.62, 0.22, 0.88, 1),
+		"WaterButton":      Color(0.22, 0.52, 0.90, 1),
+		"LavaButton":       Color(0.90, 0.40, 0.12, 1),
+		"IceButton":        Color(0.62, 0.88, 0.96, 1),
+		"SwitchButton":     Color(0.78, 0.90, 0.22, 1),
+		"DoorButton":       Color(0.65, 0.38, 0.14, 1),
+		"KeyButton":        Color(0.92, 0.76, 0.20, 1),
+		"CoinButton":       Color(0.96, 0.82, 0.22, 1),
+		"GemButton":        Color(0.22, 0.88, 0.86, 1),
+	}
+	for btn_name in cell_btns:
+		var btn := get_node("HSplitContainer/ToolPanel/VBoxContainer/" + btn_name) as Button
+		if btn:
+			var col : Color = cell_btns[btn_name]
+			btn.add_theme_stylebox_override("normal",  _make_cell_style(col, false))
+			btn.add_theme_stylebox_override("hover",   _make_cell_style(col, true))
+			btn.add_theme_stylebox_override("pressed", _make_cell_style(col, true))
+			btn.add_theme_color_override("font_color", Color(0.82, 0.86, 0.94, 1))
+			btn.add_theme_font_size_override("font_size", 13)
+
+	# Action buttons
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/ResizeButton", s_normal, s_hover)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/LoadButton",   s_normal, s_hover)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/MenuButton",   s_normal, s_hover)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/SaveButton",   s_prim,   s_prim_h)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/TestButton",   s_prim,   s_prim_h)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/ClearButton",  s_dng,    s_dng_h)
+
+	var clear_btn := get_node("HSplitContainer/ToolPanel/VBoxContainer/ClearButton") as Button
+	if clear_btn:
+		clear_btn.add_theme_color_override("font_color",       Color(0.72, 0.40, 0.36, 1))
+		clear_btn.add_theme_color_override("font_hover_color", Color(1.0,  0.80, 0.78, 1))
+
+func _style_btn(path: String, normal: StyleBoxFlat, hover: StyleBoxFlat) -> void:
+	var btn := get_node(path) as Button
+	if btn:
+		btn.add_theme_stylebox_override("normal",  normal)
+		btn.add_theme_stylebox_override("hover",   hover)
+		btn.add_theme_stylebox_override("pressed", hover)
+
+func _make_btn(bg: Color, border: Color, bw: int, cr: int) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	if bw > 0:
+		s.border_width_left   = bw
+		s.border_width_top    = bw
+		s.border_width_right  = bw
+		s.border_width_bottom = bw
+		s.border_color = border
+	s.corner_radius_top_left     = cr
+	s.corner_radius_top_right    = cr
+	s.corner_radius_bottom_right = cr
+	s.corner_radius_bottom_left  = cr
+	s.content_margin_left   = 8
+	s.content_margin_right  = 8
+	s.content_margin_top    = 4
+	s.content_margin_bottom = 4
+	return s
+
+func _make_cell_style(indicator: Color, hovered: bool) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = Color(0.071, 0.110, 0.082, 1) if hovered else Color(0.047, 0.055, 0.082, 1)
+	s.border_width_left   = 3
+	s.border_width_top    = 0
+	s.border_width_right  = 0
+	s.border_width_bottom = 0
+	s.border_color = indicator
+	s.corner_radius_top_left     = 4
+	s.corner_radius_top_right    = 4
+	s.corner_radius_bottom_right = 4
+	s.corner_radius_bottom_left  = 4
+	s.content_margin_left   = 10
+	s.content_margin_right  = 8
+	s.content_margin_top    = 4
+	s.content_margin_bottom = 4
+	return s
+
+# ─── Grid logic ───────────────────────────────────────────────────────────────
+
 func _initialize_grid():
-	"""Initialize empty grid"""
 	grid_data = []
 	for y in range(grid_height):
 		var row = []
@@ -103,7 +230,6 @@ func _initialize_grid():
 		grid_data.append(row)
 
 func _on_grid_input(event: InputEvent):
-	"""Handle mouse clicks on grid"""
 	if event is InputEventMouseButton:
 		if event.pressed and (event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT):
 			var grid_pos = _get_grid_position(event.position)
@@ -123,119 +249,89 @@ func _on_grid_input(event: InputEvent):
 				_erase_cell(grid_pos)
 
 func _get_grid_position(mouse_pos: Vector2) -> Vector2i:
-	"""Convert mouse position to grid coordinates"""
-	var cell_size = 64
+	var cell_size = 48
 	var grid_x = int(mouse_pos.x / cell_size)
 	var grid_y = int(mouse_pos.y / cell_size)
-	
 	if grid_x >= 0 and grid_x < grid_width and grid_y >= 0 and grid_y < grid_height:
 		return Vector2i(grid_x, grid_y)
 	return Vector2i(-1, -1)
 
 func _place_cell(grid_pos: Vector2i):
-	"""Place current cell type at position"""
-	# If placing START, remove any existing START positions
 	if current_cell_type == CellType.Type.START:
 		_remove_all_start_positions()
-	
 	grid_data[grid_pos.y][grid_pos.x] = current_cell_type
 	_update_grid_manager()
 
 func _erase_cell(grid_pos: Vector2i):
-	"""Erase cell at position (set to EMPTY)"""
 	grid_data[grid_pos.y][grid_pos.x] = CellType.Type.EMPTY
 	_update_grid_manager()
 
 func _remove_all_start_positions():
-	"""Remove all existing START positions from grid"""
 	for y in range(grid_height):
 		for x in range(grid_width):
 			if grid_data[y][x] == CellType.Type.START:
 				grid_data[y][x] = CellType.Type.EMPTY
 
 func _update_grid_manager():
-	"""Update grid manager with current grid data"""
 	var layout = _grid_to_string()
 	grid_manager.load_level_from_string(layout)
 	grid_renderer.refresh()
 
 func _on_cell_type_selected(cell_type):
-	"""Change current cell type to place"""
 	current_cell_type = cell_type
-	print("Selected cell type: ", CellType.Type.keys()[cell_type])
+
+# ─── Action handlers ──────────────────────────────────────────────────────────
 
 func _on_clear_pressed():
-	"""Clear the entire grid"""
 	_initialize_grid()
 	_update_grid_manager()
 
 func _on_resize_pressed():
-	"""Resize the grid based on spinbox values"""
-	var new_width = int(width_spinbox.value)
-	var new_height = int(height_spinbox.value)
-	
-	# Clamp values to safe range
-	new_width = clampi(new_width, MIN_GRID_SIZE, MAX_GRID_SIZE)
-	new_height = clampi(new_height, MIN_GRID_SIZE, MAX_GRID_SIZE)
-	
-	# Save old grid data
-	var old_data = grid_data.duplicate(true)
-	var old_width = grid_width
+	var new_width  = clampi(int(width_spinbox.value),  MIN_GRID_SIZE, MAX_GRID_SIZE)
+	var new_height = clampi(int(height_spinbox.value), MIN_GRID_SIZE, MAX_GRID_SIZE)
+
+	var old_data   = grid_data.duplicate(true)
+	var old_width  = grid_width
 	var old_height = grid_height
-	
-	# Update dimensions
-	grid_width = new_width
+
+	grid_width  = new_width
 	grid_height = new_height
-	
-	# Initialize new grid
 	_initialize_grid()
-	
-	# Copy over existing data where it fits
+
 	for y in range(min(old_height, grid_height)):
 		for x in range(min(old_width, grid_width)):
 			grid_data[y][x] = old_data[y][x]
-	
-	# Update grid manager and refresh display
+
 	_update_grid_manager()
-	
-	print("Grid resized to %dx%d" % [grid_width, grid_height])
 
 func _on_save_pressed():
-	"""Open save dialog"""
 	name_input.text = current_level_name if current_level_name != "" else "My Custom Level"
 	save_dialog.visible = true
 
 func _on_save_confirmed():
-	"""Save the level to file"""
 	var level_name = name_input.text.strip_edges()
 	if level_name == "":
 		push_error("Level name cannot be empty!")
 		return
-	
-	# Convert grid data to layout string
-	var layout_string = _grid_to_string()
-	
-	# Create level data
+
 	var level_data = {
-		"level_name": level_name,
-		"layout": layout_string,
-		"hint_text": hint_input.text,
-		"starter_code": starter_code_input.text,
-		"created_date": Time.get_datetime_string_from_system()
+		"level_name":    level_name,
+		"layout":        _grid_to_string(),
+		"hint_text":     hint_input.text,
+		"starter_code":  starter_code_input.text,
+		"created_date":  Time.get_datetime_string_from_system()
 	}
-	
-	# Save to user data folder
-	var save_path = "user://custom_levels/"
+
+	var save_path := "user://custom_levels/"
 	DirAccess.make_dir_absolute(save_path)
-	
-	var file_name = level_name.to_lower().replace(" ", "_") + ".json"
-	var full_path = save_path + file_name
-	
-	var file = FileAccess.open(full_path, FileAccess.WRITE)
+
+	var file_name : String = level_name.to_lower().replace(" ", "_") + ".json"
+	var full_path : String = save_path + file_name
+
+	var file := FileAccess.open(full_path, FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(level_data, "\t"))
 		file.close()
-		print("Level saved to: ", full_path)
 		current_level_name = level_name
 		current_level_file = full_path
 		save_dialog.visible = false
@@ -243,99 +339,78 @@ func _on_save_confirmed():
 		push_error("Failed to save level!")
 
 func _on_save_cancelled():
-	"""Close save dialog without saving"""
 	save_dialog.visible = false
 
 func _on_load_pressed():
-	"""Open load dialog"""
 	var custom_levels_path = OS.get_user_data_dir() + "/custom_levels"
 	load_dialog.current_dir = custom_levels_path
 	load_dialog.visible = true
 
 func _on_file_selected(path: String):
-	"""Load level from file"""
 	_load_level_from_path(path)
 
 func _load_level_from_path(path: String):
-	"""Load level from file path"""
-	var file = FileAccess.open(path, FileAccess.READ)
+	var file := FileAccess.open(path, FileAccess.READ)
 	if file:
-		var json_string = file.get_as_text()
+		var json_string := file.get_as_text()
 		file.close()
-		
-		var json = JSON.new()
-		var parse_result = json.parse(json_string)
-		
-		if parse_result == OK:
-			var level_data = json.data
-			_load_level_data(level_data)
+		var json := JSON.new()
+		if json.parse(json_string) == OK:
+			_load_level_data(json.data)
 			current_level_file = path
-			print("Level loaded from: ", path)
 		else:
 			push_error("Failed to parse level file!")
 	else:
 		push_error("Failed to load level file!")
 
 func _load_level_data(level_data: Dictionary):
-	"""Load level data into editor"""
 	current_level_name = level_data.get("level_name", "")
-	
-	# Parse layout string
-	var layout = level_data.get("layout", "")
-	_string_to_grid(layout)
+	_string_to_grid(level_data.get("layout", ""))
 	_update_grid_manager()
 
+# ─── Layout string serialisation ──────────────────────────────────────────────
+
 func _grid_to_string() -> String:
-	"""Convert grid data to layout string"""
 	var result = ""
 	for y in range(grid_height):
 		for x in range(grid_width):
-			var cell_type = grid_data[y][x]
-			# Use CellType.to_char() to convert all types
-			result += CellType.to_char(cell_type)
+			result += CellType.to_char(grid_data[y][x])
 		result += "\n"
 	return result.trim_suffix("\n")
 
 func _string_to_grid(layout: String):
-	"""Convert layout string to grid data"""
-	# Parse incoming layout to determine size
 	var lines = layout.split("\n")
 	var filtered_lines: Array[String] = []
 	for line in lines:
 		if line.strip_edges() != "":
 			filtered_lines.append(line)
-	
+
 	if filtered_lines.size() > 0:
 		grid_height = min(filtered_lines.size(), MAX_GRID_SIZE)
-		grid_width = min(filtered_lines[0].length(), MAX_GRID_SIZE)
-	
+		grid_width  = min(filtered_lines[0].length(), MAX_GRID_SIZE)
+
 	_initialize_grid()
-	
+
 	for y in range(min(filtered_lines.size(), grid_height)):
 		var line = filtered_lines[y]
 		for x in range(min(line.length(), grid_width)):
-			var char = line[x]
-			grid_data[y][x] = CellType.from_char(char)
-	
-	# Update spinboxes to reflect loaded level size
-	width_spinbox.value = grid_width
+			grid_data[y][x] = CellType.from_char(line[x])
+
+	width_spinbox.value  = grid_width
 	height_spinbox.value = grid_height
 
+# ─── Test / menu ──────────────────────────────────────────────────────────────
+
 func _on_test_pressed():
-	"""Test the level in game"""
-	# Store level data for main scene to load
-	var layout_string = _grid_to_string()
 	var test_level = {
-		"level_id": 999,  # Special ID for test levels
-		"level_name": "Test: " + (current_level_name if current_level_name != "" else "Untitled"),
-		"layout": layout_string,
+		"level_id":    999,
+		"level_name":  "Test: " + (current_level_name if current_level_name != "" else "Untitled"),
+		"layout":      _grid_to_string(),
 		"starter_code": starter_code_input.text,
-		"hint_text": hint_input.text
+		"hint_text":   hint_input.text
 	}
-	
 	get_tree().root.set_meta("test_level", test_level)
 	get_tree().change_scene_to_file("res://scenes/game/main.tscn")
 
 func _on_menu_pressed():
-	"""Return to main menu"""
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")

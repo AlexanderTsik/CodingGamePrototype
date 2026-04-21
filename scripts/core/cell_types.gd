@@ -27,43 +27,83 @@ enum Type {
 static func get_color(cell_type: Type) -> Color:
 	match cell_type:
 		Type.EMPTY:
-			return Color(0.1, 0.1, 0.15, 1.0)  # Dark gray
+			return Color(0.08, 0.09, 0.12, 1.0)
 		Type.WALL:
-			return Color(0.15, 0.25, 0.45, 1.0)  # Brighter blue-gray
+			return Color(0.22, 0.26, 0.35, 1.0)
 		Type.HAZARD:
-			return Color(0.9, 0.1, 0.1, 1.0)  # Bright red
+			return Color(0.72, 0.12, 0.12, 1.0)
 		Type.GOAL:
-			return Color(0.1, 0.9, 0.1, 1.0)  # Bright green
+			return Color(0.08, 0.58, 0.28, 1.0)
 		Type.START:
-			return Color(0.95, 0.95, 0.3, 1.0)  # Bright yellow
+			return Color(0.85, 0.68, 0.08, 1.0)
 		Type.WATER:
-			return Color(0.2, 0.4, 0.9, 1.0)  # Blue
+			return Color(0.12, 0.35, 0.78, 1.0)
 		Type.LAVA:
-			return Color(1.0, 0.3, 0.0, 1.0)  # Orange-red
+			return Color(0.85, 0.28, 0.04, 1.0)
 		Type.ICE:
-			return Color(0.6, 0.8, 1.0, 1.0)  # Light blue
+			return Color(0.55, 0.78, 0.95, 1.0)
 		Type.TELEPORTER:
-			return Color(0.8, 0.0, 0.8, 1.0)  # Magenta
+			return Color(0.55, 0.08, 0.75, 1.0)
 		Type.SWITCH:
-			return Color(0.9, 0.9, 0.1, 1.0)  # Yellow
+			return Color(0.82, 0.82, 0.08, 1.0)
 		Type.DOOR:
-			return Color(0.6, 0.4, 0.2, 1.0)  # Brown
+			return Color(0.48, 0.30, 0.14, 1.0)
 		Type.KEY:
-			return Color(1.0, 0.84, 0.0, 1.0)  # Gold
+			return Color(0.92, 0.75, 0.05, 1.0)
 		Type.SPRING:
-			return Color(0.3, 0.9, 0.3, 1.0)  # Light green
+			return Color(0.18, 0.75, 0.35, 1.0)
 		Type.ARROW:
-			return Color(0.0, 0.8, 0.8, 1.0)  # Cyan
+			return Color(0.05, 0.68, 0.72, 1.0)
 		Type.TRAP:
-			return Color(0.7, 0.1, 0.1, 1.0)  # Dark red
+			return Color(0.58, 0.08, 0.08, 1.0)
 		Type.CHECKPOINT:
-			return Color(0.3, 0.8, 0.3, 1.0)  # Green
+			return Color(0.18, 0.65, 0.42, 1.0)
 		Type.COIN:
-			return Color(1.0, 0.9, 0.2, 1.0)  # Gold yellow
+			return Color(0.95, 0.82, 0.12, 1.0)
 		Type.GEM:
-			return Color(0.5, 0.0, 0.9, 1.0)  # Purple
+			return Color(0.42, 0.05, 0.82, 1.0)
 		_:
-			return Color(0.5, 0.5, 0.5, 1.0)  # Gray fallback
+			return Color(0.4, 0.4, 0.4, 1.0)
+
+# Emoji icon for each cell type (displayed in the center of the cell)
+static func get_emoji(cell_type: Type) -> String:
+	match cell_type:
+		Type.WALL:
+			return "🧱"
+		Type.HAZARD:
+			return "💀"
+		Type.GOAL:
+			return "🏁"
+		Type.START:
+			return "🐞"
+		Type.WATER:
+			return "💧"
+		Type.LAVA:
+			return "🔥"
+		Type.ICE:
+			return "🧊"
+		Type.TELEPORTER:
+			return "🌀"
+		Type.SWITCH:
+			return "🔘"
+		Type.DOOR:
+			return "🚪"
+		Type.KEY:
+			return "🔑"
+		Type.SPRING:
+			return "🔼"
+		Type.ARROW:
+			return "➡"
+		Type.TRAP:
+			return "⚠"
+		Type.CHECKPOINT:
+			return "✅"
+		Type.COIN:
+			return "🪙"
+		Type.GEM:
+			return "💎"
+		_:
+			return ""
 
 # Parse character from level layout string
 static func from_char(ch: String) -> Type:

@@ -7,7 +7,7 @@ signal cell_activated(cell_pos: Vector2i, cell_type: CellType.Type)
 signal item_collected(item_type: CellType.Type, position: Vector2i)
 signal teleported(from_pos: Vector2i, to_pos: Vector2i)
 
-@export var tile_size: int = 64
+@export var tile_size: int = 48
 
 var grid: Array[Array] = []  # 2D array of CellType.Type
 var cell_properties: Dictionary = {}  # Cell-specific data: {Vector2i: Dictionary}
