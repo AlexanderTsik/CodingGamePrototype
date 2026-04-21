@@ -1,4 +1,5 @@
 import Link from "next/link";
+import NavAuth from "./NavAuth";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -20,6 +21,9 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           <Link href="/rankings" className="hover:text-[var(--text)] transition-colors">
             Rankings
           </Link>
+        </div>
+        <div className="ml-auto">
+          <NavAuth />
         </div>
       </nav>
 

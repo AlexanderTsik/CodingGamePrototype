@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createServerSupabaseClient } from "@/lib/supabase";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const revalidate = 60;
 
