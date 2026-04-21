@@ -4,9 +4,16 @@ const SUPABASE_URL = "https://sdogpbddeaevheqennbe.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkb2dwYmRkZWFldmhlcWVubmJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NTAyMDAsImV4cCI6MjA5MjEyNjIwMH0.fjo7zfbBeFqrEVH9zqSsncxpNoTIcqW4NtKZNT4UWeE";
 
-// Browser client — safe to use in Client Components
+// Singleton — one instance per browser session prevents auth-lock contention
+// (React Strict Mode double-mounts components; a new client per render means
+//  two clients racing for the same IndexedDB lock → 5 s warning + steal error)
+let _client: ReturnType<typeof createBrowserClient> | null = null;
+
 export function createClient() {
-  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!_client) {
+    _client = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  return _client;
 }
 
 // Types matching our Supabase schema
