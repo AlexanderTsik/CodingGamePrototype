@@ -5,6 +5,7 @@ assets/
 .godot/
 export_presets.cfg
 project.godot
-public/
 DEPLOYMENT.md
 docs/
+# NOTE: do NOT add platform/public/ here — it contains the exported game files
+# that must be deployed so /game/* routes resolve correctly.
