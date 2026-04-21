@@ -13,10 +13,11 @@ export default function NavAuth() {
   const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
       setUser(data.user ?? null);
       if (data.user) fetchUsername(data.user.id);
-    });
+    })();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
