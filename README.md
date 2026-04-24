@@ -144,9 +144,9 @@ The interpreter follows a classic compiler architecture:
 
 ```
 User Code → Lexer → Tokens → Parser → AST → Interpreter → Player Actions
-                                              ↓
-                                        Debug Manager
-                                      (Breakpoints, Watch)
+											  ↓
+										Debug Manager
+									  (Breakpoints, Watch)
 ```
 
 ### Key Systems

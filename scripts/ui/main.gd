@@ -73,6 +73,18 @@ var theme_toggle_button: Button
 # Syntax highlighter
 var syntax_highlighter: CodeHighlighter
 
+# Editor zoom & completion toggle
+var editor_font_size     : int   = 16
+const FONT_SIZE_MIN      : int   = 10
+const FONT_SIZE_MAX      : int   = 36
+var _zoom_label          : Label
+var _hints_btn           : Button
+var _completion_on       : bool  = true
+
+# Execution speed (shared by normal run and debug mode)
+var _exec_speed          : float = 1.0
+var _speed_label_toolbar : Label
+
 var grid_manager: GridManager
 var is_level_complete: bool = false
 var player_is_dead: bool = false
@@ -197,8 +209,15 @@ func _ready():
 	
 	# Enable code completion
 	code_input.code_completion_enabled = true
-	code_input.code_completion_prefixes = ["move", "turn", "if", "for", "while", "function", "front", "goal", "left", "right", "onHazard"]
+	# Two-char prefixes avoid the popup firing on every keypress while still
+	# triggering early enough to feel responsive.
+	code_input.code_completion_prefixes = [
+		"mo", "tu", "fr", "le", "ri", "go", "on",             # function starts
+		"if", "el", "fo", "wh", "fu", "re", "in", "ra",       # keyword starts
+	]
 	code_input.code_completion_requested.connect(_on_code_completion_requested)
+	# Ctrl+scroll zoom on the code editor
+	code_input.gui_input.connect(_on_code_input_gui_input)
 	
 	# Setup line highlighting
 	_setup_execution_highlighting()
@@ -220,6 +239,9 @@ func _ready():
 	
 	# Setup help button and popup
 	_setup_help_system()
+
+	# Setup zoom + hints toolbar (sits between button bar and code editor)
+	_setup_editor_toolbar()
 
 	# Setup win / leaderboard popup
 	_setup_win_popup()
@@ -352,26 +374,47 @@ func _load_custom_level(level_def: Dictionary):
 	print("Loaded Custom Level: %s" % level_def.get("level_name", "Untitled"))
 
 func _on_code_completion_requested():
-	# Add all available commands as completion options
-	for command in available_commands:
-		code_input.add_code_completion_option(
-			CodeEdit.KIND_FUNCTION,
-			command,
-			command,
-			Color.CYAN
-		)
-	
-	# Add keywords
-	for keyword in available_keywords:
-		code_input.add_code_completion_option(
-			CodeEdit.KIND_MEMBER,
-			keyword,
-			keyword,
-			Color.ORANGE
-		)
-	
-	# Update the completion menu
+	"""Provide categorized code completion options.
+
+	IMPORTANT: display_text must start with exactly the text the user is typing so
+	Godot's internal prefix filter can match it correctly. Do NOT prepend category
+	labels or descriptions — put them in insert_text comments instead (they are
+	never shown in the popup display_text column).
+	"""
+	var sky   := Color(0.33, 0.80, 0.98, 1.0)  # sky blue   — movement
+	var leaf  := Color(0.42, 0.90, 0.52, 1.0)  # leaf green — sensors
+	var mauve := Color(0.82, 0.38, 0.72, 1.0)  # mauve      — keywords
+
+	# ── Movement ─────────────────────────────────────────────────────────
+	_add_completion(CodeEdit.KIND_FUNCTION, "move()",      "move()",      sky)
+	_add_completion(CodeEdit.KIND_FUNCTION, "turnRight()", "turnRight()", sky)
+	_add_completion(CodeEdit.KIND_FUNCTION, "turnLeft()",  "turnLeft()",  sky)
+	_add_completion(CodeEdit.KIND_FUNCTION, "turnBack()",  "turnBack()",  sky)
+
+	# ── Sensors ──────────────────────────────────────────────────────────
+	_add_completion(CodeEdit.KIND_FUNCTION, "frontIsClear()", "frontIsClear()", leaf)
+	_add_completion(CodeEdit.KIND_FUNCTION, "leftIsClear()",  "leftIsClear()",  leaf)
+	_add_completion(CodeEdit.KIND_FUNCTION, "rightIsClear()", "rightIsClear()", leaf)
+	_add_completion(CodeEdit.KIND_FUNCTION, "goalReached()",  "goalReached()",  leaf)
+	_add_completion(CodeEdit.KIND_FUNCTION, "onHazard()",     "onHazard()",     leaf)
+
+	# ── Keywords ─────────────────────────────────────────────────────────
+	_add_completion(CodeEdit.KIND_PLAIN_TEXT, "if",       "if ",       mauve)
+	_add_completion(CodeEdit.KIND_PLAIN_TEXT, "else",     "else",      mauve)
+	_add_completion(CodeEdit.KIND_PLAIN_TEXT, "elif",     "elif ",     mauve)
+	_add_completion(CodeEdit.KIND_PLAIN_TEXT, "for",      "for ",      mauve)
+	_add_completion(CodeEdit.KIND_PLAIN_TEXT, "while",    "while ",    mauve)
+	_add_completion(CodeEdit.KIND_PLAIN_TEXT, "function", "function ", mauve)
+	_add_completion(CodeEdit.KIND_PLAIN_TEXT, "return",   "return",    mauve)
+	_add_completion(CodeEdit.KIND_PLAIN_TEXT, "in",       "in ",       mauve)
+	_add_completion(CodeEdit.KIND_PLAIN_TEXT, "range",    "range()",   mauve)
+
 	code_input.update_code_completion_options(true)
+
+func _add_completion(kind: int, display: String, insert: String, color: Color):
+	"""Register one completion option. display_text == what the popup shows and
+	what Godot's prefix-filter matches against — keep it clean (no spaces/desc)."""
+	code_input.add_code_completion_option(kind, display, insert, color)
 
 func _on_run_button_pressed():
 	# Set to normal run mode (no debug UI)
@@ -398,6 +441,9 @@ func _on_run_button_pressed():
 	stop_button.disabled = false
 	player.reset_position()
 	code_executor.execute_code(code, player)
+	# Apply the current speed setting to the freshly-started interpreter
+	if code_executor.interpreter:
+		code_executor.interpreter.set_execution_speed(_exec_speed)
 
 func _on_debug_button_pressed():
 	# Set to debug mode (show debug UI)
@@ -424,6 +470,9 @@ func _on_debug_button_pressed():
 	stop_button.disabled = false
 	player.reset_position()
 	code_executor.execute_code(code, player)
+	# Apply the current speed setting to the freshly-started interpreter
+	if code_executor.interpreter:
+		code_executor.interpreter.set_execution_speed(_exec_speed)
 
 func _on_stop_button_pressed():
 	"""Stop the currently executing code"""
@@ -1733,12 +1782,16 @@ func _on_step_out_pressed():
 		print("DEBUG: Step out button pressed")
 
 func _on_speed_changed(value: float):
-	"""Handle speed slider change"""
+	"""Handle debug speed slider change — syncs to shared _exec_speed."""
+	_exec_speed = value
 	var interpreter = code_executor.interpreter
 	if interpreter:
 		interpreter.set_execution_speed(value)
-		speed_label.text = "Speed: %.2fx" % value
-		print("DEBUG: Speed changed to %.2fx" % value)
+	speed_label.text = "Speed: %.2fx" % value
+	# Keep toolbar slider in sync
+	if _speed_label_toolbar:
+		_speed_label_toolbar.text = "%.2g×" % value
+	print("DEBUG: Speed changed to %.2fx" % value)
 
 func _set_speed_preset(speed: float):
 	"""Set speed to a preset value"""
@@ -1909,10 +1962,170 @@ func _setup_syntax_highlighting():
 	
 	# Apply to code editor
 	code_input.syntax_highlighter = syntax_highlighter
-	
+
 	print("✨ Syntax highlighting updated:")
 	print("  Theme: ", "DARK" if is_dark_mode else "LIGHT")
 	print("  Keywords: ", keyword_color)
 	print("  Functions: ", function_color)
 	print("  Strings: ", string_color)
 	print("  Symbols: ", symbol_color)
+
+# ============================================
+# Editor Toolbar  (zoom + completion toggle)
+# ============================================
+
+func _setup_editor_toolbar():
+	"""Create the thin zoom / hints toolbar row under the button bar."""
+	var panel := PanelContainer.new()
+	panel.name = "EditorToolbar"
+	var style := StyleBoxFlat.new()
+	style.bg_color              = Color(0.047, 0.051, 0.078, 0.95)
+	style.border_width_bottom   = 1
+	style.border_color          = Color(0.18, 0.20, 0.30, 0.5)
+	style.content_margin_left   = 6.0
+	style.content_margin_right  = 6.0
+	style.content_margin_top    = 3.0
+	style.content_margin_bottom = 3.0
+	panel.add_theme_stylebox_override("panel", style)
+
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 4)
+	panel.add_child(hbox)
+
+	# ── Zoom out ────────────────────────────────────────────────
+	var zoom_out_btn := Button.new()
+	zoom_out_btn.text               = "A−"
+	zoom_out_btn.flat               = true
+	zoom_out_btn.custom_minimum_size = Vector2(32, 22)
+	zoom_out_btn.tooltip_text       = "Decrease font size  (Ctrl + Scroll ↓)"
+	zoom_out_btn.pressed.connect(_zoom_out)
+	hbox.add_child(zoom_out_btn)
+
+	# ── Size label ──────────────────────────────────────────────
+	_zoom_label = Label.new()
+	_zoom_label.text                = "%dpx" % editor_font_size
+	_zoom_label.custom_minimum_size = Vector2(40, 0)
+	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_zoom_label.add_theme_font_size_override("font_size", 11)
+	_zoom_label.add_theme_color_override("font_color", Color(0.50, 0.53, 0.65, 1))
+	hbox.add_child(_zoom_label)
+
+	# ── Zoom in ─────────────────────────────────────────────────
+	var zoom_in_btn := Button.new()
+	zoom_in_btn.text               = "A+"
+	zoom_in_btn.flat               = true
+	zoom_in_btn.custom_minimum_size = Vector2(32, 22)
+	zoom_in_btn.tooltip_text       = "Increase font size  (Ctrl + Scroll ↑)"
+	zoom_in_btn.pressed.connect(_zoom_in)
+	hbox.add_child(zoom_in_btn)
+
+	# ── Separator ───────────────────────────────────────────────
+	hbox.add_child(VSeparator.new())
+
+	# ── Hints toggle ────────────────────────────────────────────
+	_hints_btn = Button.new()
+	_hints_btn.text               = "💡 Hints  ON"
+	_hints_btn.flat               = true
+	_hints_btn.custom_minimum_size = Vector2(100, 22)
+	_hints_btn.tooltip_text       = "Toggle code completion suggestions"
+	_hints_btn.add_theme_color_override("font_color", Color(0.42, 0.90, 0.52, 1.0))
+	_hints_btn.pressed.connect(_toggle_hints)
+	hbox.add_child(_hints_btn)
+
+	# ── Separator ───────────────────────────────────────────────
+	hbox.add_child(VSeparator.new())
+
+	# ── Speed label ─────────────────────────────────────────────
+	var speed_lbl := Label.new()
+	speed_lbl.text = "Speed:"
+	speed_lbl.add_theme_font_size_override("font_size", 11)
+	speed_lbl.add_theme_color_override("font_color", Color(0.50, 0.53, 0.65, 1))
+	hbox.add_child(speed_lbl)
+
+	# ── Speed slider ─────────────────────────────────────────────
+	var speed_slider_tb := HSlider.new()
+	speed_slider_tb.min_value        = 0.25
+	speed_slider_tb.max_value        = 4.0
+	speed_slider_tb.step             = 0.25
+	speed_slider_tb.value            = _exec_speed
+	speed_slider_tb.custom_minimum_size = Vector2(110, 20)
+	speed_slider_tb.tooltip_text     = "Execution speed (0.25× – 4×)"
+	speed_slider_tb.value_changed.connect(_on_toolbar_speed_changed)
+	hbox.add_child(speed_slider_tb)
+
+	# ── Speed value label ────────────────────────────────────────
+	_speed_label_toolbar = Label.new()
+	_speed_label_toolbar.text = "%.2g×" % _exec_speed
+	_speed_label_toolbar.custom_minimum_size = Vector2(34, 0)
+	_speed_label_toolbar.add_theme_font_size_override("font_size", 11)
+	_speed_label_toolbar.add_theme_color_override("font_color", Color(0.70, 0.75, 0.90, 1))
+	hbox.add_child(_speed_label_toolbar)
+
+	# ── Spacer ──────────────────────────────────────────────────
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer)
+
+	# Insert right after the debug_toolbar (which is at button_idx + 1)
+	var top_section := get_node("HSplitContainer/CodePanel/VSplitContainer/TopSection")
+	top_section.add_child(panel)
+	top_section.move_child(panel, debug_toolbar.get_index() + 1)
+
+	# Apply the initial font size
+	_apply_font_size()
+
+	print("DEBUG: Editor toolbar (zoom + hints + speed) created!")
+
+func _zoom_in():
+	"""Increase the code editor font size by one step."""
+	editor_font_size = mini(editor_font_size + 1, FONT_SIZE_MAX)
+	_apply_font_size()
+
+func _zoom_out():
+	"""Decrease the code editor font size by one step."""
+	editor_font_size = maxi(editor_font_size - 1, FONT_SIZE_MIN)
+	_apply_font_size()
+
+func _apply_font_size():
+	"""Push the current font size to the code editor and refresh the label."""
+	code_input.add_theme_font_size_override("font_size", editor_font_size)
+	if _zoom_label:
+		_zoom_label.text = "%dpx" % editor_font_size
+
+func _on_code_input_gui_input(event: InputEvent):
+	"""Ctrl + scroll wheel → zoom the code editor."""
+	if not (event is InputEventMouseButton) or not event.pressed or not event.ctrl_pressed:
+		return
+	match event.button_index:
+		MOUSE_BUTTON_WHEEL_UP:
+			_zoom_in()
+			get_viewport().set_input_as_handled()
+		MOUSE_BUTTON_WHEEL_DOWN:
+			_zoom_out()
+			get_viewport().set_input_as_handled()
+
+func _toggle_hints():
+	"""Toggle code completion suggestions on / off."""
+	_completion_on = not _completion_on
+	code_input.code_completion_enabled = _completion_on
+	if _hints_btn:
+		if _completion_on:
+			_hints_btn.text = "💡 Hints  ON"
+			_hints_btn.add_theme_color_override("font_color", Color(0.42, 0.90, 0.52, 1.0))
+		else:
+			_hints_btn.text = "💡 Hints  OFF"
+			_hints_btn.add_theme_color_override("font_color", Color(0.40, 0.42, 0.52, 1.0))
+
+func _on_toolbar_speed_changed(value: float):
+	"""Toolbar speed slider changed — applies immediately to any running execution."""
+	_exec_speed = value
+	if _speed_label_toolbar:
+		_speed_label_toolbar.text = "%.2g×" % value
+	# Sync debug speed slider + its label
+	if speed_slider:
+		speed_slider.value = value
+	if speed_label:
+		speed_label.text = "Speed: %.2fx" % value
+	# Apply to interpreter if currently running
+	if code_executor and code_executor.interpreter:
+		code_executor.interpreter.set_execution_speed(value)
