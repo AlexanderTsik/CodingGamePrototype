@@ -182,6 +182,16 @@ text = "Load Level"
 layout_mode = 2
 text = "Test Level"
 
+[node name="PublishButton" type="Button" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+text = "Publish Online"
+
+[node name="PublishStatusLabel" type="Label" parent="HSplitContainer/ToolPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 3
+text = ""
+
 [node name="Spacer" type="Control" parent="HSplitContainer/ToolPanel/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3

@@ -27,6 +27,8 @@ var grid_renderer: Control
 @onready var starter_code_input  = $SaveDialog/MarginContainer/VBoxContainer/StarterCodeInput
 @onready var width_spinbox       = $HSplitContainer/ToolPanel/VBoxContainer/WidthContainer/WidthSpinBox
 @onready var height_spinbox      = $HSplitContainer/ToolPanel/VBoxContainer/HeightContainer/HeightSpinBox
+@onready var publish_button      = $HSplitContainer/ToolPanel/VBoxContainer/PublishButton
+@onready var publish_status_label = $HSplitContainer/ToolPanel/VBoxContainer/PublishStatusLabel
 
 # Current level metadata
 var current_level_name = ""
@@ -72,6 +74,7 @@ func _ready():
 	$HSplitContainer/ToolPanel/VBoxContainer/LoadButton.pressed.connect(_on_load_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/TestButton.pressed.connect(_on_test_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/MenuButton.pressed.connect(_on_menu_pressed)
+	publish_button.pressed.connect(_on_publish_pressed)
 
 	# Connect save dialog buttons
 	$SaveDialog/MarginContainer/VBoxContainer/ButtonContainer/ConfirmButton.pressed.connect(_on_save_confirmed)
@@ -163,12 +166,13 @@ func _apply_theme() -> void:
 			btn.add_theme_font_size_override("font_size", 13)
 
 	# Action buttons
-	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/ResizeButton", s_normal, s_hover)
-	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/LoadButton",   s_normal, s_hover)
-	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/MenuButton",   s_normal, s_hover)
-	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/SaveButton",   s_prim,   s_prim_h)
-	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/TestButton",   s_prim,   s_prim_h)
-	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/ClearButton",  s_dng,    s_dng_h)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/ResizeButton",   s_normal, s_hover)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/LoadButton",    s_normal, s_hover)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/MenuButton",    s_normal, s_hover)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/SaveButton",    s_prim,   s_prim_h)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/TestButton",    s_prim,   s_prim_h)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/PublishButton", s_prim,   s_prim_h)
+	_style_btn("HSplitContainer/ToolPanel/VBoxContainer/ClearButton",   s_dng,    s_dng_h)
 
 	var clear_btn := get_node("HSplitContainer/ToolPanel/VBoxContainer/ClearButton") as Button
 	if clear_btn:
@@ -414,3 +418,63 @@ func _on_test_pressed():
 
 func _on_menu_pressed():
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+# ─── Publish ──────────────────────────────────────────────────────────────────
+
+func _on_publish_pressed() -> void:
+	# Must be logged in
+	if not AuthManager.is_logged_in():
+		_show_publish_status("Log in to publish levels", false)
+		return
+
+	# Must have a name (i.e. saved at least once)
+	var level_name: String = current_level_name.strip_edges()
+	if level_name == "":
+		_show_publish_status("Save the level first to give it a name", false)
+		return
+
+	# Grid must have a start and a goal
+	var err := _validate_for_publish()
+	if err != "":
+		_show_publish_status(err, false)
+		return
+
+	publish_button.disabled = true
+	publish_button.text     = "Publishing…"
+	publish_status_label.text = ""
+
+	var level_data := {
+		"level_name":   level_name,
+		"layout":       _grid_to_string(),
+		"hint_text":    hint_input.text,
+		"starter_code": starter_code_input.text,
+	}
+
+	var result = await ApiClient.upload_level(level_data)
+
+	publish_button.disabled = false
+	publish_button.text     = "Publish Online"
+
+	if result.has("error"):
+		_show_publish_status("Error: " + result.get("msg", str(result["error"])), false)
+	else:
+		_show_publish_status("Published! ✓", true)
+
+func _validate_for_publish() -> String:
+	var has_start := false
+	var has_goal  := false
+	for y in range(grid_height):
+		for x in range(grid_width):
+			match grid_data[y][x]:
+				CellType.Type.START: has_start = true
+				CellType.Type.GOAL:  has_goal  = true
+	if not has_start:
+		return "Level needs a Start Position"
+	if not has_goal:
+		return "Level needs a Goal"
+	return ""
+
+func _show_publish_status(msg: String, ok: bool) -> void:
+	publish_status_label.text = msg
+	var color := Color(0.40, 0.90, 0.55, 1) if ok else Color(0.95, 0.38, 0.38, 1)
+	publish_status_label.add_theme_color_override("font_color", color)

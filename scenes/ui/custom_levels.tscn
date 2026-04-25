@@ -146,6 +146,32 @@ horizontal_alignment = 1
 layout_mode = 2
 theme_override_colors/separator = Color(0.18, 0.42, 0.25, 0.50)
 
+[node name="TabRow" type="HBoxContainer" parent="MarginContainer/ContentCard/CardInner/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MyLevelsTabBtn" type="Button" parent="MarginContainer/ContentCard/CardInner/VBoxContainer/TabRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 40)
+theme_override_font_sizes/font_size = 15
+text = "My Levels"
+
+[node name="CommunityTabBtn" type="Button" parent="MarginContainer/ContentCard/CardInner/VBoxContainer/TabRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 40)
+theme_override_font_sizes/font_size = 15
+text = "Community"
+
+[node name="StatusLabel" type="Label" parent="MarginContainer/ContentCard/CardInner/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.42, 0.55, 0.48, 1)
+horizontal_alignment = 1
+text = ""
+visible = false
+
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/ContentCard/CardInner/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -157,6 +183,20 @@ size_flags_vertical = 3
 theme_override_constants/h_separation = 20
 theme_override_constants/v_separation = 20
 columns = 4
+
+[node name="LoadMoreContainer" type="HBoxContainer" parent="MarginContainer/ContentCard/CardInner/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+visible = false
+
+[node name="LoadMoreButton" type="Button" parent="MarginContainer/ContentCard/CardInner/VBoxContainer/LoadMoreContainer"]
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_hover")
+text = "Load More"
 
 [node name="BottomSep" type="HSeparator" parent="MarginContainer/ContentCard/CardInner/VBoxContainer"]
 layout_mode = 2

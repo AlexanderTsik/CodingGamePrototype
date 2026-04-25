@@ -81,20 +81,59 @@ func get_my_solution(level_id: String) -> Dictionary:
 func upload_level(level_data: Dictionary) -> Dictionary:
 	if not _auth.is_logged_in():
 		return {"error": "not_logged_in"}
-	level_data["author_id"] = _auth.get_user_id()
+	# Map editor dict format → DB column names
+	var db_payload := {
+		"author_id":    _auth.get_user_id(),
+		"name":         level_data.get("level_name", "Untitled"),
+		"grid_data":    {"layout": level_data.get("layout", "")},
+		"hint_text":    level_data.get("hint_text", ""),
+		"starter_code": level_data.get("starter_code", ""),
+		"description":  level_data.get("description", ""),
+		"is_official":  false,
+		"is_published": true,
+	}
 	return await _post("%s/rest/v1/levels" % SUPABASE_URL,
-			JSON.stringify(level_data), true, {"Prefer": "return=representation"})
+			JSON.stringify(db_payload), true, {"Prefer": "return=representation"})
 
 func get_community_levels(page: int = 0, per_page: int = 20) -> Array:
-	var offset = page * per_page
-	var url = "%s/rest/v1/levels?is_published=eq.true&select=id,name,description,avg_rating,solve_count,play_count,profiles(username)&order=solve_count.desc&limit=%d&offset=%d" % [SUPABASE_URL, per_page, offset]
-	var res = await _fetch(url, false)
+	var res = await get_community_levels_raw(page, per_page)
+	if not res is Array:
+		push_error("[API] get_community_levels unexpected response: %s" % JSON.stringify(res))
 	return res if res is Array else []
 
+# Raw version — returns exactly what the API sends back (Array or error Dict).
+func get_community_levels_raw(page: int = 0, per_page: int = 20) -> Variant:
+	var offset = page * per_page
+	var url = "%s/rest/v1/levels?is_published=eq.true&select=id,name,description,avg_rating,solve_count,play_count,profiles!author_id(username)&order=solve_count.desc&limit=%d&offset=%d" % [SUPABASE_URL, per_page, offset]
+	return await _fetch(url, false)
+
 func get_level(level_id: String) -> Dictionary:
-	var url = "%s/rest/v1/levels?id=eq.%s&select=*" % [SUPABASE_URL, level_id]
+	var url = "%s/rest/v1/levels?id=eq.%s&select=*,profiles!author_id(username)" % [SUPABASE_URL, level_id]
 	var res = await _fetch(url, false)
-	return res[0] if (res is Array and res.size() > 0) else {}
+	if res is Array and res.size() > 0:
+		return _db_to_game(res[0])
+	return {}
+
+# Converts a raw DB row into the dict format the game scenes expect.
+func _db_to_game(d: Dictionary) -> Dictionary:
+	var gd = d.get("grid_data", {})
+	var layout := ""
+	if gd is Dictionary:
+		layout = gd.get("layout", "")
+	var profiles = d.get("profiles", null)
+	var author := "Unknown"
+	if profiles is Dictionary:
+		author = profiles.get("username", "Unknown")
+	return {
+		"level_id":     d.get("id", ""),
+		"level_name":   d.get("name", "Untitled"),
+		"layout":       layout,
+		"hint_text":    d.get("hint_text", ""),
+		"starter_code": d.get("starter_code", ""),
+		"author":       author,
+		"solve_count":  d.get("solve_count", 0),
+		"play_count":   d.get("play_count", 0),
+	}
 
 # ── HTTP core — fresh HTTPRequest per call, no shared state ──────────────────
 
