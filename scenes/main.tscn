@@ -1,10 +1,10 @@
 [gd_scene load_steps=13 format=3 uid="uid://coe6bcg42qtov"]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1_0wfyh"]
-[ext_resource type="PackedScene" uid="uid://ctb84f0eehc1b" path="res://scenes/player.tscn" id="2_sugp2"]
+[ext_resource type="Script" uid="uid://tlnj0sij25sc" path="res://scripts/ui/main.gd" id="1_0wfyh"]
+[ext_resource type="PackedScene" uid="uid://be8qbmt0fe144" path="res://scenes/player.tscn" id="2_sugp2"]
 [ext_resource type="Texture2D" uid="uid://can2if4ugmpt3" path="res://assets/sprites/LediBugSprite.png" id="3_jyhfs"]
-[ext_resource type="Script" path="res://scripts/code_executor.gd" id="3_sugp2"]
-[ext_resource type="Script" path="res://scripts/simple_grid.gd" id="6_grid"]
+[ext_resource type="Script" uid="uid://du2qpsph7hee2" path="res://scripts/language/code_executor.gd" id="3_sugp2"]
+[ext_resource type="Script" uid="uid://brbtrsjudxy8n" path="res://scripts/levels/simple_grid.gd" id="6_grid"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel_dark"]
 bg_color = Color(0.15, 0.15, 0.2, 1)
@@ -194,7 +194,7 @@ position = Vector2(96, 96)
 rotation = -6.2831855
 
 [node name="Sprite" type="Sprite2D" parent="HSplitContainer/GamePanel/GridBackground/Level/Player"]
-position = Vector2(-4.505005, -5)
+position = Vector2(0, 0)
 scale = Vector2(0.2, 0.2)
 texture = ExtResource("3_jyhfs")
 

@@ -15,7 +15,6 @@ extends Control
 
 # Debug manager
 var debug_manager
-var watch_manager
 
 # Debug toolbar UI (created programmatically)
 var debug_toolbar: PanelContainer
@@ -33,21 +32,6 @@ var variables_list: VBoxContainer
 var variables_scroll: ScrollContainer
 var variables_toggle_btn: Button
 var variable_labels: Dictionary = {}
-
-# Watch expressions UI (created programmatically)
-var watch_panel: PanelContainer
-var watch_list: VBoxContainer
-var watch_scroll: ScrollContainer
-var watch_toggle_btn: Button
-var watch_input: LineEdit
-var watch_add_btn: Button
-var watch_labels: Dictionary = {}
-
-# Call stack UI (created programmatically)
-var callstack_panel: PanelContainer
-var callstack_list: VBoxContainer
-var callstack_scroll: ScrollContainer
-var callstack_toggle_btn: Button
 
 # Execution log UI (created programmatically)
 var execution_log_panel: PanelContainer
@@ -192,12 +176,6 @@ func _ready():
 		add_child(debug_manager)
 		interpreter.set_debug_manager(debug_manager)
 		print("DEBUG: Debug manager created and attached!")
-		
-		# Create and attach watch manager
-		watch_manager = WatchManager.new()
-		add_child(watch_manager)
-		watch_manager.watch_updated.connect(_on_watch_updated)
-		print("DEBUG: Watch manager created and attached!")
 	else:
 		print("ERROR: Interpreter not found in code_executor!")
 	
@@ -227,12 +205,6 @@ func _ready():
 	
 	# Setup variable viewer UI
 	_setup_variable_viewer()
-	
-	# Setup watch expressions UI
-	_setup_watch_viewer()
-	
-	# Setup call stack UI
-	_setup_callstack_viewer()
 	
 	# Setup execution log UI
 	_setup_execution_log()
@@ -425,9 +397,8 @@ func _on_run_button_pressed():
 	is_level_complete = false
 	player_is_dead = false
 	
-	# Clear variables, call stack, and log from previous execution
+	# Clear variables and log from previous execution
 	_clear_variables()
-	_clear_callstack()
 	_clear_execution_log()
 	
 	# Start timing for execution log
@@ -454,9 +425,8 @@ func _on_debug_button_pressed():
 	is_level_complete = false
 	player_is_dead = false
 	
-	# Clear variables, call stack, and log from previous execution
+	# Clear variables and log from previous execution
 	_clear_variables()
-	_clear_callstack()
 	_clear_execution_log()
 	
 	# Start timing for execution log
@@ -870,131 +840,6 @@ func _setup_variable_viewer():
 	variables_panel.visible = false
 	
 	print("DEBUG: Variable viewer UI created!")
-
-func _setup_watch_viewer():
-	"""Create and setup the watch expressions viewer UI"""
-	# Create main panel container
-	watch_panel = PanelContainer.new()
-	watch_panel.name = "WatchPanel"
-	
-	# Create VBoxContainer for layout
-	var vbox = VBoxContainer.new()
-	watch_panel.add_child(vbox)
-	
-	# Add title bar with toggle button
-	var title_bar = HBoxContainer.new()
-	vbox.add_child(title_bar)
-	
-	var title = Label.new()
-	title.text = "Watch Expressions"
-	title.add_theme_font_size_override("font_size", 16)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_bar.add_child(title)
-	
-	watch_toggle_btn = Button.new()
-	watch_toggle_btn.text = "Hide"
-	watch_toggle_btn.custom_minimum_size = Vector2(60, 0)
-	watch_toggle_btn.pressed.connect(_on_watch_toggle)
-	title_bar.add_child(watch_toggle_btn)
-	
-	# Add separator
-	var separator1 = HSeparator.new()
-	vbox.add_child(separator1)
-	
-	# Add input box for adding watches
-	var input_container = HBoxContainer.new()
-	input_container.add_theme_constant_override("separation", 5)
-	vbox.add_child(input_container)
-	
-	watch_input = LineEdit.new()
-	watch_input.placeholder_text = "Enter expression..."
-	watch_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	watch_input.text_submitted.connect(_on_watch_add_submitted)
-	input_container.add_child(watch_input)
-	
-	watch_add_btn = Button.new()
-	watch_add_btn.text = "Add"
-	watch_add_btn.custom_minimum_size = Vector2(50, 0)
-	watch_add_btn.pressed.connect(_on_watch_add_pressed)
-	input_container.add_child(watch_add_btn)
-	
-	# Add separator
-	var separator2 = HSeparator.new()
-	vbox.add_child(separator2)
-	
-	# Create scroll container for watches
-	watch_scroll = ScrollContainer.new()
-	watch_scroll.name = "WatchScroll"
-	watch_scroll.custom_minimum_size = Vector2(150, 80)
-	watch_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vbox.add_child(watch_scroll)
-	
-	# Create VBoxContainer to hold watch labels
-	watch_list = VBoxContainer.new()
-	watch_list.name = "WatchList"
-	watch_scroll.add_child(watch_list)
-	
-	# Position the panel below the variables panel
-	var debug_section = get_node("HSplitContainer/CodePanel/VSplitContainer/DebugSection")
-	debug_section.add_child(watch_panel)
-	
-	# Hide panel by default (show only in debug mode)
-	watch_panel.visible = false
-	
-	print("DEBUG: Watch viewer UI created!")
-
-func _setup_callstack_viewer():
-	"""Create and setup the call stack viewer UI"""
-	# Create main panel container
-	callstack_panel = PanelContainer.new()
-	callstack_panel.name = "CallStackPanel"
-	
-	# Create VBoxContainer for layout
-	var vbox = VBoxContainer.new()
-	callstack_panel.add_child(vbox)
-	
-	# Add title bar with toggle button
-	var title_bar = HBoxContainer.new()
-	vbox.add_child(title_bar)
-	
-	var title = Label.new()
-	title.text = "Call Stack"
-	title.add_theme_font_size_override("font_size", 16)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_bar.add_child(title)
-	
-	callstack_toggle_btn = Button.new()
-	callstack_toggle_btn.text = "Hide"
-	callstack_toggle_btn.custom_minimum_size = Vector2(60, 0)
-	callstack_toggle_btn.pressed.connect(_on_callstack_toggle)
-	title_bar.add_child(callstack_toggle_btn)
-	
-	# Add separator
-	var separator = HSeparator.new()
-	vbox.add_child(separator)
-	
-	# Create scroll container for call stack
-	callstack_scroll = ScrollContainer.new()
-	callstack_scroll.name = "CallStackScroll"
-	callstack_scroll.custom_minimum_size = Vector2(150, 60)
-	callstack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vbox.add_child(callstack_scroll)
-	
-	# Create VBoxContainer to hold call stack labels
-	callstack_list = VBoxContainer.new()
-	callstack_list.name = "CallStackList"
-	callstack_scroll.add_child(callstack_list)
-	
-	# Position the panel below the code editor
-	var debug_section = get_node("HSplitContainer/CodePanel/VSplitContainer/DebugSection")
-	debug_section.add_child(callstack_panel)
-	
-	# Hide panel by default (show only in debug mode)
-	callstack_panel.visible = false
-	
-	print("DEBUG: Call stack viewer UI created!")
 
 func _setup_execution_log():
 	"""Create and setup the execution log UI"""
@@ -1456,9 +1301,6 @@ func _on_variable_changed(var_name: String, value):
 	# Highlight changed variable briefly
 	label.add_theme_color_override("font_color", Color.YELLOW)
 	
-	# Update watch expressions
-	_update_watches()
-	
 	# Reset color after a short delay
 	await get_tree().create_timer(0.5).timeout
 	if label and is_instance_valid(label):
@@ -1476,26 +1318,6 @@ func _on_function_entered(func_name: String, params: Dictionary):
 	
 	# Add to execution log (always update data)
 	_add_log_entry("[color=green]→ Entering[/color] %s(%s)" % [func_name, params_display])
-	
-	# Update call stack (even if hidden)
-	if not callstack_list:
-		return
-	
-	# Create label for this function call
-	var label = Label.new()
-	label.name = "Call_" + str(callstack_list.get_child_count())
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	label.add_theme_font_size_override("font_size", 14)
-	label.text = "→ %s(%s)" % [func_name, params_display]
-	
-	# Add indent based on depth
-	var depth = callstack_list.get_child_count()
-	label.text = "  ".repeat(depth) + label.text
-	
-	# Highlight in green to indicate entry
-	label.add_theme_color_override("font_color", Color.GREEN)
-	
-	callstack_list.add_child(label)
 
 func _on_function_exited(func_name: String, return_value):
 	"""Called when exiting a function"""
@@ -1503,25 +1325,6 @@ func _on_function_exited(func_name: String, return_value):
 	
 	# Add to execution log
 	_add_log_entry("[color=red]← Exiting[/color] %s (returned: %s)" % [func_name, str(return_value)])
-	
-	if not callstack_list or callstack_list.get_child_count() == 0:
-		return
-	
-	# Get the last (most recent) call in the stack
-	var last_child = callstack_list.get_child(callstack_list.get_child_count() - 1)
-	
-	if last_child:
-		# Briefly highlight in red to show exit
-		last_child.add_theme_color_override("font_color", Color.RED)
-		await get_tree().create_timer(0.3).timeout
-		
-		# Remove the call from the stack
-		if last_child and is_instance_valid(last_child):
-			last_child.queue_free()
-	
-	# Hide panel if stack is empty
-	if callstack_list.get_child_count() == 0 and callstack_panel:
-		callstack_panel.visible = false
 
 
 func _clear_variables():
@@ -1537,17 +1340,6 @@ func _clear_variables():
 	variable_labels.clear()
 	
 	print("DEBUG: Variables cleared")
-
-func _clear_callstack():
-	"""Clear all call stack labels from the viewer"""
-	if not callstack_list:
-		return
-	
-	# Remove all child labels
-	for child in callstack_list.get_children():
-		child.queue_free()
-	
-	print("DEBUG: Call stack cleared")
 
 func _add_log_entry(text: String):
 	"""Add an entry to the execution log with timestamp"""
@@ -1606,18 +1398,6 @@ func _on_variables_toggle():
 		variables_scroll.visible = true
 		variables_toggle_btn.text = "Hide"
 
-func _on_callstack_toggle():
-	"""Toggle call stack panel visibility"""
-	if not callstack_scroll or not callstack_toggle_btn:
-		return
-	
-	if callstack_scroll.visible:
-		callstack_scroll.visible = false
-		callstack_toggle_btn.text = "Show"
-	else:
-		callstack_scroll.visible = true
-		callstack_toggle_btn.text = "Hide"
-
 func _on_execution_log_toggle():
 	"""Toggle execution log panel visibility"""
 	if not execution_log_scroll or not execution_log_toggle_btn:
@@ -1630,112 +1410,11 @@ func _on_execution_log_toggle():
 		execution_log_scroll.visible = true
 		execution_log_toggle_btn.text = "Hide"
 
-func _on_watch_toggle():
-	"""Toggle watch expressions panel visibility"""
-	if not watch_scroll or not watch_toggle_btn:
-		return
-	
-	if watch_scroll.visible:
-		watch_scroll.visible = false
-		watch_toggle_btn.text = "Show"
-	else:
-		watch_scroll.visible = true
-		watch_toggle_btn.text = "Hide"
-
 func _print_node_tree(node: Node, depth: int):
 	"""Debug helper to print node hierarchy"""
 	print("  ".repeat(depth) + node.name + " (" + node.get_class() + ")")
 	for child in node.get_children():
 		_print_node_tree(child, depth + 1)
-
-# ============================================
-# Watch Expression Functions
-# ============================================
-
-func _on_watch_add_pressed():
-	"""Handle watch add button press"""
-	if watch_input and watch_input.text.strip_edges() != "":
-		_add_watch_expression(watch_input.text.strip_edges())
-		watch_input.text = ""
-
-func _on_watch_add_submitted(expression: String):
-	"""Handle watch expression submitted via Enter key"""
-	if expression.strip_edges() != "":
-		_add_watch_expression(expression.strip_edges())
-		watch_input.text = ""
-
-func _add_watch_expression(expression: String):
-	"""Add a new watch expression"""
-	if watch_manager:
-		watch_manager.add_watch(expression)
-		_create_watch_label(expression)
-		print("DEBUG: Added watch expression: %s" % expression)
-
-func _create_watch_label(expression: String):
-	"""Create a label for a watch expression"""
-	if not watch_list:
-		return
-	
-	# Create container for watch (expression + remove button)
-	var container = HBoxContainer.new()
-	container.name = "Watch_" + expression.replace(" ", "_")
-	container.add_theme_constant_override("separation", 5)
-	
-	# Create label
-	var label = Label.new()
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	label.add_theme_font_size_override("font_size", 12)
-	label.text = "%s = ?" % expression
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	container.add_child(label)
-	
-	# Create remove button
-	var remove_btn = Button.new()
-	remove_btn.text = "X"
-	remove_btn.custom_minimum_size = Vector2(25, 0)
-	remove_btn.pressed.connect(func(): _remove_watch_expression(expression))
-	container.add_child(remove_btn)
-	
-	watch_list.add_child(container)
-	watch_labels[expression] = label
-	
-	print("DEBUG: Created watch label for: %s" % expression)
-
-func _remove_watch_expression(expression: String):
-	"""Remove a watch expression"""
-	if watch_manager:
-		watch_manager.remove_watch(expression)
-	
-	# Remove UI element
-	if watch_labels.has(expression):
-		var label = watch_labels[expression]
-		var container = label.get_parent()
-		if container:
-			container.queue_free()
-		watch_labels.erase(expression)
-		print("DEBUG: Removed watch expression: %s" % expression)
-
-func _on_watch_updated(expression: String, value, error: String):
-	"""Called when a watch expression is evaluated"""
-	if not watch_labels.has(expression):
-		return
-	
-	var label = watch_labels[expression]
-	if error != "":
-		label.text = "%s = ERROR: %s" % [expression, error]
-		label.add_theme_color_override("font_color", Color.RED)
-	else:
-		label.text = "%s = %s" % [expression, str(value)]
-		label.add_theme_color_override("font_color", Color.CYAN)
-
-func _update_watches():
-	"""Update all watch expressions with current variable state"""
-	if not watch_manager or not code_executor or not code_executor.interpreter:
-		return
-	
-	var interpreter = code_executor.interpreter
-	var variables = interpreter._get_current_variables() if interpreter.has_method("_get_current_variables") else {}
-	watch_manager.evaluate_watches(variables)
 
 # ============================================
 # Debug Control Functions
@@ -1808,10 +1487,6 @@ func _show_debug_ui():
 		debug_toolbar.visible = true
 	if variables_panel:
 		variables_panel.visible = true
-	if watch_panel:
-		watch_panel.visible = true
-	if callstack_panel:
-		callstack_panel.visible = true
 	if execution_log_panel:
 		execution_log_panel.visible = true
 	print("DEBUG: Debug UI shown")
@@ -1822,10 +1497,6 @@ func _hide_debug_ui():
 		debug_toolbar.visible = false
 	if variables_panel:
 		variables_panel.visible = false
-	if watch_panel:
-		watch_panel.visible = false
-	if callstack_panel:
-		callstack_panel.visible = false
 	if execution_log_panel:
 		execution_log_panel.visible = false
 	print("DEBUG: Debug UI hidden")

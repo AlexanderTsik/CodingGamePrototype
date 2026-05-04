@@ -247,7 +247,7 @@ position = Vector2(96, 96)
 rotation = -6.2831855
 
 [node name="Sprite" type="Sprite2D" parent="HSplitContainer/GamePanel/GridBackground/Level/Player"]
-position = Vector2(-4.505005, -5)
+position = Vector2(0, 0)
 scale = Vector2(0.15, 0.15)
 texture = ExtResource("3_jyhfs")
 
