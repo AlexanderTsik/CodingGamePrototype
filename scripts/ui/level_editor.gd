@@ -253,7 +253,7 @@ func _on_grid_input(event: InputEvent):
 				_erase_cell(grid_pos)
 
 func _get_grid_position(mouse_pos: Vector2) -> Vector2i:
-	var cell_size = 48
+	var cell_size = grid_manager.tile_size if grid_manager and grid_manager.tile_size > 0 else 48
 	var grid_x = int(mouse_pos.x / cell_size)
 	var grid_y = int(mouse_pos.y / cell_size)
 	if grid_x >= 0 and grid_x < grid_width and grid_y >= 0 and grid_y < grid_height:

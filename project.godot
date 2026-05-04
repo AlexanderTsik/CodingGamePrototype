@@ -23,3 +23,9 @@ ApiClient="*res://scripts/network/api_client.gd"
 [gui]
 
 theme/custom="res://assets/default_theme.tres"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
