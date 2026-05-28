@@ -159,6 +159,10 @@ func _request(url: String, method: int, headers: PackedStringArray, body: String
 	# Each call gets its own HTTPRequest node so there is no shared mutable state.
 	var http := HTTPRequest.new()
 	add_child(http)
+	# HTML5 builds: the browser already decompresses gzip responses, so Godot
+	# must not try to decompress them again (causes stream_peer_gzip FAILED
+	# and a garbled body that fails to parse as JSON).
+	http.accept_gzip = false
 
 	var err = http.request(url, headers, method, body)
 	if err != OK:
@@ -213,6 +217,7 @@ func _refresh_session() -> bool:
 
 	var http := HTTPRequest.new()
 	add_child(http)
+	http.accept_gzip = false
 	http.request(url, headers, HTTPClient.METHOD_POST, body)
 	var data = await http.request_completed
 	http.queue_free()
