@@ -352,7 +352,7 @@ With a function: 9 lines."""
 #       for (j in range(5)) { move() }   <- inner loop
 #       turnBack()
 #       for (j in range(5)) { move() }
-#       turnRight()
+#       turnLeft()
 #       move()
 #       move()
 #   }
@@ -417,22 +417,24 @@ Tip: turnBack() turns you 180 degrees."""
 		"starter_code": """# The path spirals outward — each arm is 1 step longer than the last.
 # Without a variable you need four separate for loops.
 # With a variable, one outer loop handles all four arms!
+# (Variables are created by simple assignment — no keyword needed.)
 #
-#   var n = 1
+#   n = 1
 #   for (i in range(4)) {
 #       for (j in range(n)) { move() }
 #       turnRight()
 #       n = n + 1
 #   }
 
-var n = 1
+n = 1
 # Use n inside the inner loop, then increase it each iteration.
 """,
 		"hint_text": """Level 7 — Variables
 
-Variables store values that can change:
+Variables store values that can change.
+Just assign a value to create one — no keyword needed:
 
-  var n = 1
+  n = 1
   for (i in range(4)) {
       for (j in range(n)) { move() }
       turnRight()
@@ -634,7 +636,7 @@ function followWall() {
     }
 }
 
-var steps = 0
+steps = 0
 while (not goalReached()) {
     followWall()
     steps = steps + 1
@@ -656,7 +658,7 @@ Combine everything:
       }
   }
 
-  var steps = 0                <- variable
+  steps = 0                    <- variable
   while (not goalReached()) {  <- while + not
       followWall()             <- function call
       steps = steps + 1        <- accumulator

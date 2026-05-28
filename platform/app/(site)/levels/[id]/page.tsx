@@ -8,7 +8,7 @@ async function getLevel(id: string) {
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase
     .from("levels")
-    .select("*, profiles(username)")
+    .select("*, profiles!author_id(username)")
     .eq("id", id)
     .eq("is_published", true)
     .single();
@@ -25,7 +25,7 @@ async function getLeaderboard(id: string) {
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase
     .from("solutions")
-    .select("move_count, code_length, profiles(username)")
+    .select("move_count, code_length, profiles!user_id(username)")
     .eq("level_id", id)
     .order("move_count", { ascending: true })
     .order("code_length", { ascending: true })

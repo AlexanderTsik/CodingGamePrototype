@@ -202,18 +202,9 @@ func _load_community_levels() -> void:
 	_set_status("Loading…", true)
 	_load_more_container.visible = false
 
-	var raw = await ApiClient.get_community_levels_raw(_community_page, PER_PAGE)
-	print("[CustomLevels] raw type=%s  value=%s" % [typeof(raw), JSON.stringify(raw).left(300)])
-
-	var levels : Array = raw if raw is Array else []
+	var levels : Array = await ApiClient.get_community_levels(_community_page, PER_PAGE)
 
 	_is_loading = false
-
-	if not raw is Array:
-		_set_status("API error: %s" % JSON.stringify(raw).left(120), false)
-		return
-
-	_set_status("Got %d level(s)" % levels.size(), true)
 
 	if levels.is_empty() and _community_page == 0:
 		_show_empty_label(_get_grid(), "No community levels yet.\nBe the first to publish one!")
@@ -330,7 +321,8 @@ func _get_grid() -> GridContainer:
 # ─── Callbacks — local levels ─────────────────────────────────────────────────
 
 func _on_play_local_pressed(level_data: Dictionary) -> void:
-	level_data["level_id"] = 999
+	# Local saved levels don't have a UUID — mark the source so the game knows.
+	level_data["level_source"] = "local"
 	get_tree().root.set_meta("custom_level", level_data)
 	get_tree().change_scene_to_file("res://scenes/game/main.tscn")
 
@@ -368,7 +360,9 @@ func _on_play_community_pressed(level_id: String, btn: Button) -> void:
 		_set_status("Failed to load level. Try again.", false)
 		return
 
-	level_data["level_id"] = 999
+	# Community levels carry a real UUID — keep it so we can submit to the
+	# correct leaderboard and let the player restart the level later.
+	level_data["level_source"] = "community"
 	get_tree().root.set_meta("custom_level", level_data)
 	get_tree().change_scene_to_file("res://scenes/game/main.tscn")
 

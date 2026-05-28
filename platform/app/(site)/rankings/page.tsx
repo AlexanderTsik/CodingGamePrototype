@@ -6,7 +6,7 @@ async function getTopSolvers() {
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase
     .from("solutions")
-    .select("user_id, profiles(username)")
+    .select("user_id, profiles!user_id(username)")
     .limit(1000);
 
   if (!data) return [];

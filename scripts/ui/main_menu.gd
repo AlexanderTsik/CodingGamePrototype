@@ -34,6 +34,59 @@ func _ready():
 	AuthManager.logged_in.connect(_on_logged_in)
 	AuthManager.logged_out.connect(_on_logged_out)
 
+	# When embedded in the platform website, auto-load the level from the URL.
+	# We hide the menu UI immediately so the user doesn't see it flash.
+	if OS.get_name() == "Web":
+		var level_id: String = str(JavaScriptBridge.eval(
+			"new URLSearchParams(window.location.search).get('level_id') || ''"))
+		if level_id != "" and level_id != "null":
+			_hide_menu_and_show_loading()
+			_load_level_from_url(level_id)
+
+# ── Deep-link from platform website ──────────────────────────────────────────
+
+func _hide_menu_and_show_loading() -> void:
+	"""Hide the main menu UI immediately and show a loading indicator.
+	Called when ?level_id=… is present so the user doesn't see the menu flash."""
+	$CenterContainer.visible = false
+	$UserBar.visible = false
+
+	var loading := Label.new()
+	loading.name = "DeepLinkLoading"
+	loading.text = "Loading level..."
+	loading.add_theme_font_size_override("font_size", 24)
+	loading.add_theme_color_override("font_color", Color(0.78, 0.84, 0.98, 1))
+	loading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	loading.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	loading.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(loading)
+
+func _load_level_from_url(level_id: String) -> void:
+	var level_data: Dictionary = await ApiClient.get_level(level_id)
+	if level_data.is_empty() or level_data.has("error"):
+		_show_deeplink_error("Could not load this level.\nThe link may be invalid or the level was removed.")
+		return
+	# Mark the source so the game knows how to restart / route the leaderboard.
+	# IMPORTANT: do NOT overwrite level_id — the UUID is needed for the leaderboard.
+	level_data["level_source"] = "community"
+	get_tree().root.set_meta("custom_level", level_data)
+	get_tree().change_scene_to_file("res://scenes/game/main.tscn")
+
+func _show_deeplink_error(msg: String) -> void:
+	"""Show an error in the loading indicator and fall back to the main menu."""
+	var loading = get_node_or_null("DeepLinkLoading")
+	if loading:
+		loading.text = msg + "\n\nReturning to main menu..."
+		loading.add_theme_color_override("font_color", Color(0.95, 0.55, 0.55, 1))
+	await get_tree().create_timer(2.5).timeout
+	if not is_inside_tree():
+		return
+	$CenterContainer.visible = true
+	$UserBar.visible = true
+	var l = get_node_or_null("DeepLinkLoading")
+	if l:
+		l.queue_free()
+
 # ── Navigation ────────────────────────────────────────────────────────────────
 
 func _on_start_pressed():

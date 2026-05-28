@@ -8,7 +8,7 @@ async function getLevels() {
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase
     .from("levels")
-    .select("id, name, description, solve_count, play_count, avg_rating, is_official, profiles(username)")
+    .select("id, name, description, solve_count, play_count, avg_rating, is_official, profiles!author_id(username)")
     .eq("is_published", true)
     .order("solve_count", { ascending: false })
     .limit(50);

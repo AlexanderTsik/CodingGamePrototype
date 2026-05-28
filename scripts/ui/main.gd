@@ -73,6 +73,15 @@ var grid_manager: GridManager
 var is_level_complete: bool = false
 var player_is_dead: bool = false
 var current_level_id: int = 1
+# Tracks where the current level came from so restart / next-level /
+# leaderboard can dispatch correctly:
+#   "builtin"   — bundled tutorial levels  (use current_level_id)
+#   "local"     — user-saved JSON file     (use cached dict, no leaderboard)
+#   "community" — fetched from Supabase    (use UUID, has leaderboard)
+var current_level_source: String = "builtin"
+# Cached level dict — needed so we can restart custom levels (which aren't
+# in level_definitions) without re-fetching from disk or the network.
+var current_level_dict: Dictionary = {}
 var level_definitions: Node
 
 # Win / leaderboard popup
@@ -251,6 +260,11 @@ func _ready():
 func load_level(level_id: int):
 	"""Load a level by ID"""
 	current_level_id = level_id
+	current_level_source = "builtin"
+	current_level_dict = {}
+	# Built-in levels do have a "Next Level" — re-enable the button
+	# (it's hidden for custom levels via _load_custom_level).
+	next_level_button.visible = true
 	var level_def = level_definitions.get_level(level_id)
 	
 	if level_def.is_empty():
@@ -300,9 +314,18 @@ func load_level(level_id: int):
 	print("Loaded Level %d: %s" % [level_id, level_def["level_name"]])
 
 func _load_custom_level(level_def: Dictionary):
-	"""Load a custom level"""
-	current_level_id = level_def.get("level_id", 999)
-	
+	"""Load a custom level (community-fetched, locally-saved, or under-test)."""
+	# Cache the full dict so Restart can reload without a re-fetch / re-read.
+	current_level_dict = level_def
+	current_level_source = level_def.get("level_source", "local")
+	# current_level_id stays as a sentinel for non-builtin levels — never used
+	# for lookup in level_definitions. The real ID lives in level_def["level_id"]
+	# (UUID for community, absent for local).
+	current_level_id = 999
+	# Custom levels have no "Next Level" — hide the button. A "Back to Levels"
+	# affordance lives in _on_next_level_button_pressed for non-builtin sources.
+	next_level_button.visible = false
+
 	# Find or create GridManager
 	var level_node = get_node("HSplitContainer/GamePanel/GridBackground/Level")
 	grid_manager = level_node.get_node_or_null("GridManager")
@@ -336,14 +359,19 @@ func _load_custom_level(level_def: Dictionary):
 	
 	# Update code editor with starter code
 	code_input.text = level_def.get("starter_code", "")
-	
-	# Update title
-	title_label.text = level_def.get("level_name", "Custom Level")
-	
+
+	# Update title — show "by <author>" for community levels.
+	var lvl_name : String = level_def.get("level_name", "Custom Level")
+	var author   : String = level_def.get("author", "")
+	if current_level_source == "community" and author != "":
+		title_label.text = "%s — by %s" % [lvl_name, author]
+	else:
+		title_label.text = lvl_name
+
 	# Update output with hint
 	output_label.text = level_def.get("hint_text", "Complete your custom level!")
-	
-	print("Loaded Custom Level: %s" % level_def.get("level_name", "Untitled"))
+
+	print("Loaded Custom Level: %s (source: %s)" % [lvl_name, current_level_source])
 
 func _on_code_completion_requested():
 	"""Provide categorized code completion options.
@@ -476,11 +504,22 @@ func _on_execution_complete():
 		current_line_highlight = -1
 
 func _on_restart_button_pressed():
-	"""Restart current level"""
-	load_level(current_level_id)
+	"""Restart the current level. Dispatch by source so custom levels reload
+	from their cached dict rather than failing the level_definitions lookup."""
+	# Stop any in-flight execution first to avoid the old run racing the new level.
+	if code_executor:
+		code_executor.stop_execution()
+	if current_level_source == "builtin":
+		load_level(current_level_id)
+	else:
+		_load_custom_level(current_level_dict)
 
 func _on_next_level_button_pressed():
-	"""Load next level"""
+	"""Load next level. For custom levels there's no 'next' — fall back to
+	the Custom Levels list instead of advancing past the end of builtins."""
+	if current_level_source != "builtin":
+		get_tree().change_scene_to_file("res://scenes/ui/custom_levels.tscn")
+		return
 	var next_level = current_level_id + 1
 	if next_level <= level_definitions.get_level_count():
 		load_level(next_level)
@@ -619,12 +658,14 @@ func _setup_win_popup():
 	retry_btn.custom_minimum_size = Vector2(110, 36)
 	retry_btn.pressed.connect(func():
 		_win_popup.visible = false
-		load_level(current_level_id)
+		# Route through the same dispatcher Restart uses so custom levels work.
+		_on_restart_button_pressed()
 	)
 	btn_row.add_child(retry_btn)
 
 	var next_btn = Button.new()
 	next_btn.text = "Next Level →"
+	next_btn.name = "WinNextButton"   # so we can re-label it per level source
 	next_btn.custom_minimum_size = Vector2(110, 36)
 	next_btn.pressed.connect(func():
 		_win_popup.visible = false
@@ -632,15 +673,38 @@ func _setup_win_popup():
 	)
 	btn_row.add_child(next_btn)
 
+func _get_leaderboard_key() -> String:
+	"""Return the leaderboard ID for the current level, or '' if it has none.
+	Local-only saved levels don't have a shareable leaderboard."""
+	if current_level_source == "builtin":
+		return "builtin_%d" % current_level_id
+	if current_level_source == "community":
+		var uuid = str(current_level_dict.get("level_id", ""))
+		# Guard against the legacy 999 sentinel slipping through.
+		return uuid if uuid != "" and uuid != "999" else ""
+	return ""  # local — no shared leaderboard
+
 func _show_win_popup():
 	var moves       = player.move_count
 	var code        = code_input.text
 	var code_length = code.replace(" ", "").replace("\n", "").replace("\t", "").length()
-	var level_id    = "builtin_%d" % current_level_id
+	var level_id    = _get_leaderboard_key()
 
 	_win_stats.text      = "%d moves  ·  %d chars of code" % [moves, code_length]
 	_win_rank_label.text = ""
 	_win_popup.visible   = true
+
+	# Relabel the "Next Level" button so it reflects what it actually does.
+	# For custom levels there's no next-in-sequence — it returns to the list.
+	var next_btn := _win_popup.find_child("WinNextButton", true, false) as Button
+	if next_btn:
+		next_btn.text = "Next Level →" if current_level_source == "builtin" else "Back to Levels →"
+
+	# Local-only custom levels don't have a leaderboard at all.
+	if level_id == "":
+		_set_lb_status("This level isn't on a shared leaderboard.")
+		return
+
 	_set_lb_status("Submitting solution..." if AuthManager.is_logged_in() else "Loading leaderboard...")
 
 	# Submit first (if logged in), then fetch so the player's entry is already in DB

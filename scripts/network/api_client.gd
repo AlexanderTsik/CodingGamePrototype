@@ -170,6 +170,9 @@ func _request(url: String, method: int, headers: PackedStringArray, body: String
 	http.queue_free()
 
 	var http_code  : int             = data[1]
+	if http_code == 0:
+		push_error("[API] network error or timeout (code 0) for: %s" % url)
+		return {"error": "network_error", "msg": "Network error — check your connection"}
 	var body_bytes : PackedByteArray = data[3]
 	var body_text  : String          = body_bytes.get_string_from_utf8()
 
