@@ -16,20 +16,20 @@ func _ready():
 	interpreter.execution_error.connect(_on_execution_error)
 
 func execute_code(code: String, player: Node2D):
-	# Tokenize
+	# Tokenize — surface the first error instead of running a broken AST.
 	var lexer = Lexer.new()
 	var tokens = lexer.tokenize(code)
-	
-	# Check for lexer errors (would be in push_error)
-	# For now, we continue even if there are warnings
-	
+	if not lexer.errors.is_empty():
+		execution_error.emit(lexer.errors[0])
+		return
+
 	# Parse
 	var parser = Parser.new()
 	var ast = parser.parse(tokens)
-	
-	# Check for parser errors
-	# For now, we continue even if there are warnings
-	
+	if not parser.errors.is_empty():
+		execution_error.emit(parser.errors[0])
+		return
+
 	# Execute
 	interpreter.execute(ast, player)
 

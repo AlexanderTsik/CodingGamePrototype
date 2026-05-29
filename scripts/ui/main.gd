@@ -84,11 +84,8 @@ var current_level_source: String = "builtin"
 var current_level_dict: Dictionary = {}
 var level_definitions: Node
 
-# Win / leaderboard popup
-var _win_popup: Panel
-var _win_stats: Label
-var _win_rank_label: Label
-var _win_lb_container: VBoxContainer
+# Win / leaderboard popup (built + managed by win_popup.gd)
+var _win_popup: WinPopup
 
 # Available commands and keywords for code completion
 var available_commands = ["move()", "turnRight()", "turnLeft()", "turnBack()", "frontIsClear()", "goalReached()", "onHazard()", "leftIsClear()", "rightIsClear()"]
@@ -173,20 +170,20 @@ func _ready():
 	await get_tree().process_frame
 	var interpreter = code_executor.interpreter
 	if interpreter:
-		print("DEBUG: Connecting to interpreter signals...")
+		Dbg.p("DEBUG: Connecting to interpreter signals...")
 		interpreter.line_executing.connect(_on_line_executing)
 		interpreter.variable_changed.connect(_on_variable_changed)
 		interpreter.function_entered.connect(_on_function_entered)
 		interpreter.function_exited.connect(_on_function_exited)
-		print("DEBUG: Interpreter signals connected!")
+		Dbg.p("DEBUG: Interpreter signals connected!")
 		
 		# Create and attach debug manager
 		debug_manager = DebugManager.new()
 		add_child(debug_manager)
 		interpreter.set_debug_manager(debug_manager)
-		print("DEBUG: Debug manager created and attached!")
+		Dbg.p("DEBUG: Debug manager created and attached!")
 	else:
-		print("ERROR: Interpreter not found in code_executor!")
+		Dbg.p("ERROR: Interpreter not found in code_executor!")
 	
 	# Load level definitions
 	level_definitions = load("res://scripts/levels/level_definitions.gd").new()
@@ -225,7 +222,8 @@ func _ready():
 	_setup_editor_toolbar()
 
 	# Setup win / leaderboard popup
-	_setup_win_popup()
+	_win_popup = WinPopup.new(self)
+	add_child(_win_popup)
 
 	# Set default example code
 	code_input.text = examples["simple_moves"]
@@ -311,7 +309,7 @@ func load_level(level_id: int):
 	# Update output with hint
 	output_label.text = level_def["hint_text"]
 	
-	print("Loaded Level %d: %s" % [level_id, level_def["level_name"]])
+	Dbg.p("Loaded Level %d: %s" % [level_id, level_def["level_name"]])
 
 func _load_custom_level(level_def: Dictionary):
 	"""Load a custom level (community-fetched, locally-saved, or under-test)."""
@@ -371,7 +369,7 @@ func _load_custom_level(level_def: Dictionary):
 	# Update output with hint
 	output_label.text = level_def.get("hint_text", "Complete your custom level!")
 
-	print("Loaded Custom Level: %s (source: %s)" % [lvl_name, current_level_source])
+	Dbg.p("Loaded Custom Level: %s (source: %s)" % [lvl_name, current_level_source])
 
 func _on_code_completion_requested():
 	"""Provide categorized code completion options.
@@ -487,7 +485,7 @@ func _on_execution_complete():
 		output_label.text = "Level complete!"
 		output_label.add_theme_color_override("font_color", Color(0.40, 0.90, 0.55, 1))
 		next_level_button.disabled = false
-		_show_win_popup()
+		_win_popup.show_result()
 	elif player_is_dead:
 		output_label.text = "You died — press Restart to try again."
 		output_label.add_theme_color_override("font_color", Color(0.98, 0.55, 0.35, 1))
@@ -541,18 +539,18 @@ func _on_execution_error(error_msg: String):
 	debug_button.disabled = false
 	stop_button.disabled = true
 	
-	print("ERROR: ", error_msg)
+	Dbg.p("ERROR: %s" % error_msg)
 
 func _on_level_completed():
 	"""Called when player reaches goal"""
 	is_level_complete = true
-	print("🎉 Level completed!")
+	Dbg.p("🎉 Level completed!")
 
 func _on_player_died():
 	"""Called when player hits hazard"""
 	player_is_dead = true
 	code_executor.stop_execution()
-	print("💀 Player died!")
+	Dbg.p("💀 Player died!")
 
 func _update_help_text():
 	output_label.text = """Movement Commands:
@@ -570,220 +568,6 @@ if/elif/else, for, while, do-while
 
 Click Run to execute!"""
 
-# ── Win / Leaderboard popup ───────────────────────────────────────────────────
-
-func _setup_win_popup():
-	_win_popup = Panel.new()
-	var popup_style = StyleBoxFlat.new()
-	popup_style.bg_color = Color(0.11, 0.12, 0.17, 0.97)
-	popup_style.border_width_left   = 2
-	popup_style.border_width_top    = 2
-	popup_style.border_width_right  = 2
-	popup_style.border_width_bottom = 2
-	popup_style.border_color = Color(0.25, 0.85, 0.45, 1.0)
-	popup_style.corner_radius_top_left     = 12
-	popup_style.corner_radius_top_right    = 12
-	popup_style.corner_radius_bottom_right = 12
-	popup_style.corner_radius_bottom_left  = 12
-	popup_style.shadow_color  = Color(0, 0, 0, 0.55)
-	popup_style.shadow_size   = 12
-	popup_style.shadow_offset = Vector2(0, 4)
-	_win_popup.add_theme_stylebox_override("panel", popup_style)
-	_win_popup.visible         = false
-	_win_popup.anchor_left     = 0.5
-	_win_popup.anchor_top      = 0.5
-	_win_popup.anchor_right    = 0.5
-	_win_popup.anchor_bottom   = 0.5
-	_win_popup.offset_left     = -240.0
-	_win_popup.offset_top      = -240.0
-	_win_popup.offset_right    = 240.0
-	_win_popup.offset_bottom   = 240.0
-	_win_popup.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_win_popup.grow_vertical   = Control.GROW_DIRECTION_BOTH
-	add_child(_win_popup)
-
-	var margin = MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left",   20)
-	margin.add_theme_constant_override("margin_right",  20)
-	margin.add_theme_constant_override("margin_top",    20)
-	margin.add_theme_constant_override("margin_bottom", 20)
-	_win_popup.add_child(margin)
-
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	margin.add_child(vbox)
-
-	var title = Label.new()
-	title.text = "🎉 Level Complete!"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
-	vbox.add_child(title)
-
-	_win_stats = Label.new()
-	_win_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(_win_stats)
-
-	_win_rank_label = Label.new()
-	_win_rank_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_win_rank_label.add_theme_font_size_override("font_size", 15)
-	vbox.add_child(_win_rank_label)
-
-	vbox.add_child(HSeparator.new())
-
-	var lb_title = Label.new()
-	lb_title.text = "Top Solutions"
-	lb_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lb_title.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
-	vbox.add_child(lb_title)
-
-	var scroll = ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(0, 180)
-	vbox.add_child(scroll)
-
-	_win_lb_container = VBoxContainer.new()
-	_win_lb_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_win_lb_container)
-
-	var btn_row = HBoxContainer.new()
-	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	btn_row.add_theme_constant_override("separation", 12)
-	vbox.add_child(btn_row)
-
-	var retry_btn = Button.new()
-	retry_btn.text = "Play Again"
-	retry_btn.custom_minimum_size = Vector2(110, 36)
-	retry_btn.pressed.connect(func():
-		_win_popup.visible = false
-		# Route through the same dispatcher Restart uses so custom levels work.
-		_on_restart_button_pressed()
-	)
-	btn_row.add_child(retry_btn)
-
-	var next_btn = Button.new()
-	next_btn.text = "Next Level →"
-	next_btn.name = "WinNextButton"   # so we can re-label it per level source
-	next_btn.custom_minimum_size = Vector2(110, 36)
-	next_btn.pressed.connect(func():
-		_win_popup.visible = false
-		_on_next_level_button_pressed()
-	)
-	btn_row.add_child(next_btn)
-
-func _get_leaderboard_key() -> String:
-	"""Return the leaderboard ID for the current level, or '' if it has none.
-	Local-only saved levels don't have a shareable leaderboard."""
-	if current_level_source == "builtin":
-		return "builtin_%d" % current_level_id
-	if current_level_source == "community":
-		var uuid = str(current_level_dict.get("level_id", ""))
-		# Guard against the legacy 999 sentinel slipping through.
-		return uuid if uuid != "" and uuid != "999" else ""
-	return ""  # local — no shared leaderboard
-
-func _show_win_popup():
-	var moves       = player.move_count
-	var code        = code_input.text
-	var code_length = code.replace(" ", "").replace("\n", "").replace("\t", "").length()
-	var level_id    = _get_leaderboard_key()
-
-	_win_stats.text      = "%d moves  ·  %d chars of code" % [moves, code_length]
-	_win_rank_label.text = ""
-	_win_popup.visible   = true
-
-	# Relabel the "Next Level" button so it reflects what it actually does.
-	# For custom levels there's no next-in-sequence — it returns to the list.
-	var next_btn := _win_popup.find_child("WinNextButton", true, false) as Button
-	if next_btn:
-		next_btn.text = "Next Level →" if current_level_source == "builtin" else "Back to Levels →"
-
-	# Local-only custom levels don't have a leaderboard at all.
-	if level_id == "":
-		_set_lb_status("This level isn't on a shared leaderboard.")
-		return
-
-	_set_lb_status("Submitting solution..." if AuthManager.is_logged_in() else "Loading leaderboard...")
-
-	# Submit first (if logged in), then fetch so the player's entry is already in DB
-	if AuthManager.is_logged_in():
-		var sub_result = await ApiClient.submit_solution(level_id, code, moves, code_length)
-		if sub_result.has("error"):
-			_win_rank_label.text = "Submit failed: %s" % sub_result.get("msg", sub_result["error"])
-			_win_rank_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
-		_set_lb_status("Loading leaderboard...")
-	else:
-		_win_rank_label.text = "Log in to save your score!"
-		_win_rank_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.4))
-
-	var entries: Array = await ApiClient.get_leaderboard(level_id)
-	_clear_lb()
-
-	if entries.is_empty():
-		_set_lb_status("No solutions yet — you're first!")
-		return
-
-	_add_lb_row("#", "Player", "Moves", "Code", true, false)
-
-	var my_username = AuthManager.get_username() if AuthManager.is_logged_in() else ""
-	var my_rank     = -1
-
-	for i in entries.size():
-		var e     = entries[i]
-		var prof  = e.get("profiles", null)
-		var uname = prof.get("username", "???") if prof is Dictionary else "???"
-		var is_me = my_username != "" and uname == my_username
-		if is_me:
-			my_rank = i + 1
-		_add_lb_row(str(i + 1), uname,
-				str(e.get("move_count", "?")),
-				str(e.get("code_length", "?")),
-				false, is_me)
-
-	if my_rank > 0:
-		_win_rank_label.text = "Your rank: #%d" % my_rank
-		_win_rank_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
-	elif AuthManager.is_logged_in():
-		_win_rank_label.text = "Solution submitted!"
-		_win_rank_label.add_theme_color_override("font_color", Color(0.5, 0.8, 0.5))
-
-func _set_lb_status(msg: String):
-	_clear_lb()
-	var lbl = Label.new()
-	lbl.text = msg
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_win_lb_container.add_child(lbl)
-
-func _clear_lb():
-	for child in _win_lb_container.get_children():
-		child.queue_free()
-
-func _add_lb_row(rank: String, uname: String, moves: String, code_len: String,
-		is_header: bool, is_me: bool):
-	var row = HBoxContainer.new()
-	if is_me:
-		var style = StyleBoxFlat.new()
-		style.bg_color = Color(0.15, 0.4, 0.15, 0.6)
-		row.add_theme_stylebox_override("panel", style)
-
-	var cols   = [rank, uname, moves, code_len]
-	var widths = [28,   0,     52,    52]
-
-	for j in cols.size():
-		var lbl = Label.new()
-		lbl.text = cols[j]
-		lbl.custom_minimum_size = Vector2(widths[j], 0)
-		if widths[j] == 0:
-			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		if is_header:
-			lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
-		elif is_me:
-			lbl.add_theme_color_override("font_color", Color(0.4, 1.0, 0.4))
-		_win_lb_container.add_child(lbl)
-
-	_win_lb_container.add_child(row)
 
 # ============================================
 # Visual Feedback System
@@ -807,7 +591,7 @@ func _setup_execution_highlighting():
 	# Connect gutter click signal
 	code_input.gutter_clicked.connect(_on_gutter_clicked)
 	
-	print("DEBUG: Execution highlighting and breakpoints enabled!")
+	Dbg.p("DEBUG: Execution highlighting and breakpoints enabled!")
 
 func _on_gutter_clicked(line: int, gutter: int):
 	"""Handle gutter clicks for breakpoint toggling"""
@@ -815,7 +599,7 @@ func _on_gutter_clicked(line: int, gutter: int):
 		if debug_manager:
 			debug_manager.toggle_breakpoint(line + 1)  # +1 because lines are 1-indexed in our system
 			_update_breakpoint_display(line)
-			print("DEBUG: Breakpoint toggled at line %d" % (line + 1))
+			Dbg.p("DEBUG: Breakpoint toggled at line %d" % (line + 1))
 
 func _update_breakpoint_display(line: int):
 	"""Update the visual display of a breakpoint"""
@@ -903,7 +687,7 @@ func _setup_variable_viewer():
 	# Hide panel by default (show only in debug mode)
 	variables_panel.visible = false
 	
-	print("DEBUG: Variable viewer UI created!")
+	Dbg.p("DEBUG: Variable viewer UI created!")
 
 func _setup_execution_log():
 	"""Create and setup the execution log UI"""
@@ -963,7 +747,7 @@ func _setup_execution_log():
 	# Hide panel by default (show only in debug mode)
 	execution_log_panel.visible = false
 	
-	print("DEBUG: Execution log UI created!")
+	Dbg.p("DEBUG: Execution log UI created!")
 
 func _setup_debug_toolbar():
 	"""Create debug control toolbar programmatically"""
@@ -1098,7 +882,7 @@ func _setup_debug_toolbar():
 	code_panel.add_child(debug_toolbar)
 	code_panel.move_child(debug_toolbar, button_idx + 1)
 	
-	print("DEBUG: Debug toolbar created!")
+	Dbg.p("DEBUG: Debug toolbar created!")
 	
 	# Hide debug toolbar by default (only show in debug mode)
 	debug_toolbar.visible = false
@@ -1298,7 +1082,7 @@ square()"""
 	close_btn.pressed.connect(_on_help_close_pressed)
 	vbox.add_child(close_btn)
 	
-	print("DEBUG: Help system created!")
+	Dbg.p("DEBUG: Help system created!")
 
 func _on_help_button_pressed():
 	"""Show the help popup"""
@@ -1312,7 +1096,7 @@ func _on_help_close_pressed():
 
 func _on_line_executing(line_number: int):
 	"""Called when a line is about to be executed"""
-	print("DEBUG: Highlighting line %d" % line_number)
+	Dbg.p("DEBUG: Highlighting line %d" % line_number)
 	
 	# Add to execution log
 	_add_log_entry("[color=cyan]Line %d[/color]" % line_number)
@@ -1327,18 +1111,18 @@ func _on_line_executing(line_number: int):
 		current_line_highlight = editor_line
 		var highlight_color = Color(0.3, 0.5, 1.0, 0.5)  # Increased alpha for visibility
 		code_input.set_line_background_color(editor_line, highlight_color)
-		print("DEBUG: Applied highlight to line %d with color %s" % [editor_line, highlight_color])
+		Dbg.p("DEBUG: Applied highlight to line %d with color %s" % [editor_line, highlight_color])
 		
 		# Scroll to current line
 		code_input.set_caret_line(editor_line)
 		code_input.center_viewport_to_caret()
 	else:
-		print("DEBUG: Line %d out of range (total lines: %d)" % [editor_line, code_input.get_line_count()])
+		Dbg.p("DEBUG: Line %d out of range (total lines: %d)" % [editor_line, code_input.get_line_count()])
 
 
 func _on_variable_changed(var_name: String, value):
 	"""Called when a variable value changes"""
-	print("DEBUG: Variable changed: %s = %s" % [var_name, str(value)])
+	Dbg.p("DEBUG: Variable changed: %s = %s" % [var_name, str(value)])
 	
 	# Add to execution log (always update data)
 	_add_log_entry("[color=yellow]%s[/color] = %s" % [var_name, str(value)])
@@ -1372,7 +1156,7 @@ func _on_variable_changed(var_name: String, value):
 
 func _on_function_entered(func_name: String, params: Dictionary):
 	"""Called when entering a function"""
-	print("DEBUG: Entering function: %s" % func_name)
+	Dbg.p("DEBUG: Entering function: %s" % func_name)
 	
 	# Format parameters for log
 	var params_str = []
@@ -1385,7 +1169,7 @@ func _on_function_entered(func_name: String, params: Dictionary):
 
 func _on_function_exited(func_name: String, return_value):
 	"""Called when exiting a function"""
-	print("DEBUG: Exiting function: %s (returned: %s)" % [func_name, str(return_value)])
+	Dbg.p("DEBUG: Exiting function: %s (returned: %s)" % [func_name, str(return_value)])
 	
 	# Add to execution log
 	_add_log_entry("[color=red]← Exiting[/color] %s (returned: %s)" % [func_name, str(return_value)])
@@ -1403,12 +1187,12 @@ func _clear_variables():
 	# Clear the dictionary
 	variable_labels.clear()
 	
-	print("DEBUG: Variables cleared")
+	Dbg.p("DEBUG: Variables cleared")
 
 func _add_log_entry(text: String):
 	"""Add an entry to the execution log with timestamp"""
 	if not execution_log:
-		print("ERROR: execution_log is null!")
+		Dbg.p("ERROR: execution_log is null!")
 		return
 	
 	# Calculate elapsed time
@@ -1424,7 +1208,7 @@ func _add_log_entry(text: String):
 	# Add the text (with BBCode already in it)
 	execution_log.append_text(text + "\n")
 	
-	print("DEBUG: Added log entry at %.2fs" % elapsed_sec)
+	Dbg.p("DEBUG: Added log entry at %.2fs" % elapsed_sec)
 	
 	# Limit log size by line count
 	var line_count = execution_log.get_line_count()
@@ -1444,7 +1228,7 @@ func _clear_execution_log():
 	
 	execution_log.clear()
 	
-	print("DEBUG: Execution log cleared")
+	Dbg.p("DEBUG: Execution log cleared")
 
 # ============================================
 # Toggle Functions for Panels
@@ -1476,7 +1260,7 @@ func _on_execution_log_toggle():
 
 func _print_node_tree(node: Node, depth: int):
 	"""Debug helper to print node hierarchy"""
-	print("  ".repeat(depth) + node.name + " (" + node.get_class() + ")")
+	Dbg.p("  ".repeat(depth) + node.name + " (" + node.get_class() + ")")
 	for child in node.get_children():
 		_print_node_tree(child, depth + 1)
 
@@ -1490,7 +1274,7 @@ func _on_pause_pressed():
 		debug_manager.pause()
 		pause_btn.disabled = true
 		resume_btn.disabled = false
-		print("DEBUG: Pause button pressed")
+		Dbg.p("DEBUG: Pause button pressed")
 
 func _on_resume_pressed():
 	"""Handle resume button press"""
@@ -1498,7 +1282,7 @@ func _on_resume_pressed():
 		debug_manager.resume()
 		pause_btn.disabled = false
 		resume_btn.disabled = true
-		print("DEBUG: Resume button pressed")
+		Dbg.p("DEBUG: Resume button pressed")
 
 func _on_step_over_pressed():
 	"""Handle step over button press"""
@@ -1506,7 +1290,7 @@ func _on_step_over_pressed():
 		debug_manager.step_over()
 		pause_btn.disabled = true
 		resume_btn.disabled = false
-		print("DEBUG: Step over button pressed")
+		Dbg.p("DEBUG: Step over button pressed")
 
 func _on_step_into_pressed():
 	"""Handle step into button press"""
@@ -1514,7 +1298,7 @@ func _on_step_into_pressed():
 		debug_manager.step_into()
 		pause_btn.disabled = true
 		resume_btn.disabled = false
-		print("DEBUG: Step into button pressed")
+		Dbg.p("DEBUG: Step into button pressed")
 
 func _on_step_out_pressed():
 	"""Handle step out button press"""
@@ -1522,7 +1306,7 @@ func _on_step_out_pressed():
 		debug_manager.step_out()
 		pause_btn.disabled = true
 		resume_btn.disabled = false
-		print("DEBUG: Step out button pressed")
+		Dbg.p("DEBUG: Step out button pressed")
 
 func _on_speed_changed(value: float):
 	"""Handle debug speed slider change — syncs to shared _exec_speed."""
@@ -1534,7 +1318,7 @@ func _on_speed_changed(value: float):
 	# Keep toolbar slider in sync
 	if _speed_label_toolbar:
 		_speed_label_toolbar.text = "%.2g×" % value
-	print("DEBUG: Speed changed to %.2fx" % value)
+	Dbg.p("DEBUG: Speed changed to %.2fx" % value)
 
 func _set_speed_preset(speed: float):
 	"""Set speed to a preset value"""
@@ -1553,7 +1337,7 @@ func _show_debug_ui():
 		variables_panel.visible = true
 	if execution_log_panel:
 		execution_log_panel.visible = true
-	print("DEBUG: Debug UI shown")
+	Dbg.p("DEBUG: Debug UI shown")
 
 func _hide_debug_ui():
 	"""Hide all debug panels and toolbar"""
@@ -1563,7 +1347,7 @@ func _hide_debug_ui():
 		variables_panel.visible = false
 	if execution_log_panel:
 		execution_log_panel.visible = false
-	print("DEBUG: Debug UI hidden")
+	Dbg.p("DEBUG: Debug UI hidden")
 
 func _on_theme_toggle_pressed():
 	"""Toggle between dark and light themes"""
@@ -1698,12 +1482,12 @@ func _setup_syntax_highlighting():
 	# Apply to code editor
 	code_input.syntax_highlighter = syntax_highlighter
 
-	print("✨ Syntax highlighting updated:")
-	print("  Theme: ", "DARK" if is_dark_mode else "LIGHT")
-	print("  Keywords: ", keyword_color)
-	print("  Functions: ", function_color)
-	print("  Strings: ", string_color)
-	print("  Symbols: ", symbol_color)
+	Dbg.p("✨ Syntax highlighting updated:")
+	Dbg.p("  Theme: %s" % ("DARK" if is_dark_mode else "LIGHT"))
+	Dbg.p("  Keywords: %s" % keyword_color)
+	Dbg.p("  Functions: %s" % function_color)
+	Dbg.p("  Strings: %s" % string_color)
+	Dbg.p("  Symbols: %s" % symbol_color)
 
 # ============================================
 # Editor Toolbar  (zoom + completion toggle)
@@ -1809,7 +1593,7 @@ func _setup_editor_toolbar():
 	# Apply the initial font size
 	_apply_font_size()
 
-	print("DEBUG: Editor toolbar (zoom + hints + speed) created!")
+	Dbg.p("DEBUG: Editor toolbar (zoom + hints + speed) created!")
 
 func _zoom_in():
 	"""Increase the code editor font size by one step."""

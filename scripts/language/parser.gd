@@ -7,11 +7,13 @@ const Token = TokenSystem.Token
 var tokens: Array
 var current: int = 0
 var functions: Dictionary = {}
+var errors: Array = []  # Collected error messages (empty = success)
 
 func parse(token_list: Array) -> ASTNodes.ProgramNode:
 	tokens = token_list
 	current = 0
 	functions = {}
+	errors = []
 	
 	var program = ASTNodes.ProgramNode.new()
 	
@@ -196,22 +198,6 @@ func _parse_return_statement() -> ASTNodes.ReturnNode:
 	var value = _parse_expression()
 	return ASTNodes.ReturnNode.new(value, return_token.line)
 
-func _parse_command() -> ASTNodes.CommandNode:
-	var cmd_token = _consume(TokenType.COMMAND, "Expected command")
-	var cmd_name = cmd_token.value
-	
-	_consume(TokenType.LEFT_PAREN, "Expected '(' after command")
-	
-	var args = []
-	if not _check(TokenType.RIGHT_PAREN):
-		args.append(_parse_expression())
-		while _match(TokenType.COMMA):
-			args.append(_parse_expression())
-	
-	_consume(TokenType.RIGHT_PAREN, "Expected ')' after command arguments")
-	
-	return ASTNodes.CommandNode.new(cmd_name, args)
-
 func _parse_function_call() -> ASTNodes.CallNode:
 	var func_name_token = _consume(TokenType.IDENTIFIER, "Expected function name")
 	var func_name = func_name_token.value
@@ -342,6 +328,14 @@ func _parse_primary():
 	# Number literal
 	if _match(TokenType.NUMBER):
 		return ASTNodes.NumberNode.new(_previous().value)
+
+	# Boolean / null literals
+	if _match(TokenType.TRUE):
+		return ASTNodes.BooleanNode.new(true)
+	if _match(TokenType.FALSE):
+		return ASTNodes.BooleanNode.new(false)
+	if _match(TokenType.NULL):
+		return ASTNodes.NullNode.new()
 	
 	# String literal
 	if _match(TokenType.STRING):
@@ -438,4 +432,6 @@ func _skip_newlines():
 
 func _error(message: String):
 	var token = _peek()
-	push_error("Parse error at line %d, column %d: %s" % [token.line, token.column, message])
+	var full := "Line %d, column %d: %s" % [token.line, token.column, message]
+	errors.append(full)
+	push_error("Parse error — " + full)

@@ -9,6 +9,7 @@ var position: int = 0
 var line: int = 1
 var column: int = 1
 var tokens: Array = []
+var errors: Array = []  # Collected error messages (empty = success)
 
 # Keyword mapping
 var keywords = {
@@ -24,7 +25,10 @@ var keywords = {
 	"return": TokenType.RETURN,
 	"and": TokenType.AND,
 	"or": TokenType.OR,
-	"not": TokenType.NOT
+	"not": TokenType.NOT,
+	"true": TokenType.TRUE,
+	"false": TokenType.FALSE,
+	"null": TokenType.NULL
 }
 
 # Built-in commands (now treated as regular identifiers, checked at runtime)
@@ -36,6 +40,7 @@ func tokenize(code: String) -> Array:
 	line = 1
 	column = 1
 	tokens = []
+	errors = []
 	
 	while position < source.length():
 		_skip_whitespace()
@@ -131,12 +136,17 @@ func tokenize(code: String) -> Array:
 				else:
 					_add_token(TokenType.GREATER_THAN, char)
 			_:
-				push_error("Unexpected character '%s' at line %d, column %d" % [char, line, column])
+				_error("unexpected character '%s'" % char)
 				position += 1
 				column += 1
 	
 	tokens.append(Token.new(TokenType.EOF, null, line, column))
 	return tokens
+
+func _error(message: String) -> void:
+	var full := "Line %d, column %d: %s" % [line, column, message]
+	errors.append(full)
+	push_error("Lexer error — " + full)
 
 func _current_char() -> String:
 	if position < source.length():
@@ -245,7 +255,7 @@ func _read_string(quote_char: String) -> Token:
 			column += 1
 	
 	if position >= source.length():
-		push_error("Unterminated string at line %d, column %d" % [line, start_col])
+		_error("unterminated string")
 		return Token.new(TokenType.STRING, result, line, start_col)
 	
 	position += 1  # Skip closing quote

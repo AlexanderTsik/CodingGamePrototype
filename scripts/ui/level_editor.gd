@@ -33,6 +33,7 @@ var grid_renderer: Control
 # Current level metadata
 var current_level_name = ""
 var current_level_file = ""
+var _save_status_label: Label  # inline validation feedback inside the save dialog
 
 func _ready():
 	# Initialize grid data
@@ -72,6 +73,11 @@ func _ready():
 	$HSplitContainer/ToolPanel/VBoxContainer/ClearButton.pressed.connect(_on_clear_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/SaveButton.pressed.connect(_on_save_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/LoadButton.pressed.connect(_on_load_pressed)
+
+	# The native file dialog behind Load doesn't work in HTML5 exports; on web,
+	# local levels are loaded from the Custom Levels screen instead.
+	if OS.has_feature("web"):
+		$HSplitContainer/ToolPanel/VBoxContainer/LoadButton.hide()
 	$HSplitContainer/ToolPanel/VBoxContainer/TestButton.pressed.connect(_on_test_pressed)
 	$HSplitContainer/ToolPanel/VBoxContainer/MenuButton.pressed.connect(_on_menu_pressed)
 	publish_button.pressed.connect(_on_publish_pressed)
@@ -79,6 +85,15 @@ func _ready():
 	# Connect save dialog buttons
 	$SaveDialog/MarginContainer/VBoxContainer/ButtonContainer/ConfirmButton.pressed.connect(_on_save_confirmed)
 	$SaveDialog/MarginContainer/VBoxContainer/ButtonContainer/CancelButton.pressed.connect(_on_save_cancelled)
+
+	# Inline validation status label, placed just above the dialog's buttons
+	_save_status_label = Label.new()
+	_save_status_label.add_theme_font_size_override("font_size", 12)
+	_save_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_save_status_label.visible = false
+	var _save_vbox = $SaveDialog/MarginContainer/VBoxContainer
+	_save_vbox.add_child(_save_status_label)
+	_save_vbox.move_child(_save_status_label, _save_vbox.get_child_count() - 2)
 
 	# Connect load dialog
 	load_dialog.file_selected.connect(_on_file_selected)
@@ -310,12 +325,20 @@ func _on_resize_pressed():
 
 func _on_save_pressed():
 	name_input.text = current_level_name if current_level_name != "" else "My Custom Level"
+	_save_status_label.visible = false
 	save_dialog.visible = true
 
 func _on_save_confirmed():
 	var level_name = name_input.text.strip_edges()
 	if level_name == "":
-		push_error("Level name cannot be empty!")
+		_show_save_status("Level name cannot be empty.")
+		return
+
+	# Same Start/Goal check as Publish — a level with no start or goal would
+	# spawn the player in a wall or be impossible to win.
+	var validation_err := _validate_for_publish()
+	if validation_err != "":
+		_show_save_status(validation_err + " before saving.")
 		return
 
 	var level_data = {
@@ -472,7 +495,14 @@ func _validate_for_publish() -> String:
 		return "Level needs a Start Position"
 	if not has_goal:
 		return "Level needs a Goal"
+	if not GridManager.is_layout_solvable(_grid_to_string()):
+		return "The Goal isn't reachable from the Start (check for walls blocking the path)"
 	return ""
+
+func _show_save_status(msg: String) -> void:
+	_save_status_label.text = msg
+	_save_status_label.add_theme_color_override("font_color", Color(0.95, 0.38, 0.38, 1))
+	_save_status_label.visible = true
 
 func _show_publish_status(msg: String, ok: bool) -> void:
 	publish_status_label.text = msg

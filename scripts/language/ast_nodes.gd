@@ -59,6 +59,23 @@ class StringNode extends ASTNode:
 	func _to_string() -> String:
 		return "String(\"%s\")" % value
 
+class BooleanNode extends ASTNode:
+	var value: bool
+
+	func _init(val: bool):
+		super._init("Boolean")
+		value = val
+
+	func _to_string() -> String:
+		return "Boolean(%s)" % str(value)
+
+class NullNode extends ASTNode:
+	func _init():
+		super._init("Null")
+
+	func _to_string() -> String:
+		return "Null"
+
 class IdentifierNode extends ASTNode:
 	var name: String
 	
@@ -84,18 +101,6 @@ class AssignmentNode extends ASTNode:
 # ============================================
 # Commands and Function Calls
 # ============================================
-
-class CommandNode extends ASTNode:
-	var command_name: String
-	var arguments: Array = []
-	
-	func _init(name: String, args: Array = [], line: int = -1):
-		super._init("Command", line)
-		command_name = name
-		arguments = args
-	
-	func _to_string() -> String:
-		return "Command(%s)" % command_name
 
 class CallNode extends ASTNode:
 	var function_name: String

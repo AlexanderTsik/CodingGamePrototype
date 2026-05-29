@@ -56,9 +56,9 @@ func _sync_sprite_and_position():
 	# Snap position to correct world coords for current grid_position
 	position = grid_manager.grid_to_world(grid_position)
 
-func move():
-	"""Move one cell forward in the current facing direction"""
-	_attempt_move(current_direction)
+func move(duration: float = 0.25) -> void:
+	"""Move one cell forward in the current facing direction."""
+	await _attempt_move(current_direction, duration)
 
 func turnRight():
 	"""Turn 90 degrees clockwise"""
@@ -68,7 +68,7 @@ func turnRight():
 	var new_y = current_direction.x
 	current_direction = Vector2i(new_x, new_y)
 	_update_facing_rotation()
-	print("Turned right, now facing: %v" % current_direction)
+	Dbg.p("Turned right, now facing: %v" % current_direction)
 
 func turnLeft():
 	"""Turn 90 degrees counter-clockwise"""
@@ -78,13 +78,13 @@ func turnLeft():
 	var new_y = -current_direction.x
 	current_direction = Vector2i(new_x, new_y)
 	_update_facing_rotation()
-	print("Turned left, now facing: %v" % current_direction)
+	Dbg.p("Turned left, now facing: %v" % current_direction)
 
 func turnBack():
 	"""Turn 180 degrees around"""
 	current_direction = -current_direction
 	_update_facing_rotation()
-	print("Turned around, now facing: %v" % current_direction)
+	Dbg.p("Turned around, now facing: %v" % current_direction)
 
 func _update_facing_rotation():
 	"""Rotate sprite to face current direction"""
@@ -112,7 +112,7 @@ func is_front_clear() -> bool:
 		return true
 	var check_pos = grid_position + current_direction
 	var result = grid_manager.is_walkable(check_pos)
-	print("frontIsClear() - Facing: %v, Checking: %v, Result: %s" % [current_direction, check_pos, result])
+	Dbg.p("frontIsClear() - Facing: %v, Checking: %v, Result: %s" % [current_direction, check_pos, result])
 	return result
 
 func is_left_clear() -> bool:
@@ -141,33 +141,28 @@ func is_on_hazard() -> bool:
 		return false
 	return grid_manager.is_hazard(grid_position)
 
-func _attempt_move(direction: Vector2i):
-	"""Attempt to move in a direction with collision checking"""
+func _attempt_move(direction: Vector2i, duration: float) -> void:
+	"""Attempt to move in a direction with collision checking."""
 	var target_grid_pos = grid_position + direction
 	
 	if not grid_manager:
-		# Fallback to simple boundary checking
-		if target_grid_pos.x < 0 or target_grid_pos.x >= 8 or target_grid_pos.y < 0 or target_grid_pos.y >= 10:
-			hit_wall.emit()
-			print("Hit boundary!")
-			return
+		# No grid loaded — there's nothing to collide with, so just move.
 		grid_position = target_grid_pos
-		_do_move(direction)
+		await _do_move(direction, duration)
 		return
 	
 	# Check if walkable
 	if not grid_manager.is_walkable(target_grid_pos):
 		hit_wall.emit()
-		print("Hit wall at", target_grid_pos)
+		Dbg.p("Hit wall at %v" % target_grid_pos)
 		return
 
 	# Move is valid, execute it
 	move_count += 1
 	grid_position = target_grid_pos
-	_do_move(direction)
+	await _do_move(direction, duration)
 	
-	# Check for hazards and goals after move completes
-	await _wait_for_tween()
+	# (movement is already awaited via _do_move above)
 	
 	# Check if player landed on teleporter
 	if grid_manager.is_teleporter(grid_position):
@@ -175,21 +170,18 @@ func _attempt_move(direction: Vector2i):
 	else:
 		grid_manager.check_player_position(grid_position)
 
-func _do_move(direction: Vector2i):
-	"""Execute the actual movement animation"""
+func _do_move(direction: Vector2i, duration: float) -> void:
+	"""Animate the move over `duration` seconds (0 = instant), then wait for it."""
 	movement_started.emit()
-	var tween = create_tween()
 	var ts := grid_manager.tile_size if grid_manager else 48
-	var target_pos = position + Vector2(direction * ts)
-	tween.tween_property(self, "position", target_pos, 0.25)
-	tween.finished.connect(_on_movement_finished)
-
-func _on_movement_finished():
+	var target_pos := position + Vector2(direction * ts)
+	if duration <= 0.0:
+		position = target_pos
+	else:
+		var tween := create_tween()
+		tween.tween_property(self, "position", target_pos, duration)
+		await tween.finished
 	movement_completed.emit()
-
-func _wait_for_tween():
-	"""Helper to wait for tween to complete"""
-	await get_tree().create_timer(0.26).timeout
 
 func _handle_teleporter():
 	"""Handle teleporter logic"""
@@ -197,7 +189,7 @@ func _handle_teleporter():
 	var target_pos = grid_manager.get_teleporter_target(from_pos)
 	
 	if target_pos != from_pos:
-		print("Player: Teleporting from %v to %v" % [from_pos, target_pos])
+		Dbg.p("Player: Teleporting from %v to %v" % [from_pos, target_pos])
 		
 		# Emit signal
 		teleported.emit(from_pos, target_pos)
@@ -241,12 +233,12 @@ func add_item(item_name: String):
 	if not item_name in inventory:
 		inventory.append(item_name)
 		item_collected.emit(item_name)
-		print("Player: Collected %s" % item_name)
+		Dbg.p("Player: Collected %s" % item_name)
 
 func use_item(item_name: String) -> bool:
 	if item_name in inventory:
 		inventory.erase(item_name)
-		print("Player: Used %s" % item_name)
+		Dbg.p("Player: Used %s" % item_name)
 		return true
 	return false
 

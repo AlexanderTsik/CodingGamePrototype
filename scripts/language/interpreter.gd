@@ -33,6 +33,9 @@ var should_return: bool = false
 var debug_manager: DebugManager = null
 var current_call_depth: int = 0
 const BASE_DELAY: float = 0.3
+const MOVE_TIME: float = 0.3   # base seconds for one move animation (scaled by speed)
+const TURN_TIME: float = 0.15  # base seconds to pause after a turn (scaled by speed)
+var instant: bool = false      # tests set this to skip all delays/animation
 
 func execute(ast: ASTNodes.ProgramNode, player: Node2D):
 	if is_running:
@@ -95,7 +98,7 @@ func _execute_statement(statement):
 	
 	# Emit line execution signal with line number and type
 	if statement.line_number > 0:
-		print("DEBUG [Interpreter]: Emitting line_executing for line %d" % statement.line_number)
+		Dbg.p("DEBUG [Interpreter]: Emitting line_executing for line %d" % statement.line_number)
 		line_executing.emit(statement.line_number)
 		
 		# Check if we should pause at this line
@@ -112,16 +115,15 @@ func _execute_statement(statement):
 		
 		if should_pause:
 			execution_paused.emit()
-			print("DEBUG [Interpreter]: Paused at line %d" % statement.line_number)
+			Dbg.p("DEBUG [Interpreter]: Paused at line %d" % statement.line_number)
 			
 			# Wait for continue signal or step signal
 			await debug_manager.continue_requested
 			execution_resumed.emit()
-			print("DEBUG [Interpreter]: Resumed from line %d" % statement.line_number)
+			Dbg.p("DEBUG [Interpreter]: Resumed from line %d" % statement.line_number)
 		
-		# Apply execution delay with speed multiplier
-		var delay = BASE_DELAY / execution_speed
-		await get_tree().create_timer(delay).timeout
+		# Pacing comes from the action commands (move/turn); pure-logic
+		# statements run with no artificial per-line delay.
 	
 	if statement is ASTNodes.CallNode:
 		await _execute_function_call(statement)
@@ -162,25 +164,33 @@ func _execute_builtin_command(cmd_name: String, arguments: Array):
 	# Evaluate arguments (if any)
 	var args = []
 	for arg in arguments:
-		args.append(_evaluate_expression(arg))
+		args.append(await _evaluate_expression(arg))
 	
-	# Execute built-in commands
+	# Execute built-in commands. Pacing scales with execution_speed and the
+	# interpreter awaits the move animation so it never races ahead of the bug.
 	match cmd_name:
-		# Turn-based movement system
 		"move":
-			current_player.move()
-			await get_tree().create_timer(0.3).timeout
+			await current_player.move(0.0 if instant else MOVE_TIME / execution_speed)
 		"turnRight":
 			current_player.turnRight()
-			await get_tree().create_timer(0.1).timeout
+			await _beat(TURN_TIME)
 		"turnLeft":
 			current_player.turnLeft()
-			await get_tree().create_timer(0.1).timeout
+			await _beat(TURN_TIME)
 		"turnBack":
 			current_player.turnBack()
-			await get_tree().create_timer(0.1).timeout
+			await _beat(TURN_TIME)
 		_:
 			_error("Unknown built-in command: %s" % cmd_name)
+
+func _beat(base: float) -> void:
+	# One paced beat between steps, scaled by execution speed. Skipped entirely
+	# in `instant` mode (tests) so runs complete without waiting on timers.
+	if instant:
+		return
+	var d := base / execution_speed
+	if d > 0.0:
+		await get_tree().create_timer(d).timeout
 
 func _execute_function_call(call: ASTNodes.CallNode):
 	var func_name = call.function_name
@@ -196,64 +206,69 @@ func _execute_function_call(call: ASTNodes.CallNode):
 		_error("Sensing function '%s' must be used in an expression (if/while condition)" % func_name)
 		return
 	
-	# Otherwise, call user-defined function
+	# Otherwise, call a user-defined function (statement context: ignore its return)
+	await _invoke_function(call)
+
+func _invoke_function(call: ASTNodes.CallNode):
+	"""Run a user-defined function and return its return value. Used for both
+	statement calls and calls embedded in expressions (e.g. x = f(), if f() > 1)."""
+	var func_name = call.function_name
 	if not func_name in user_functions:
 		_error("Undefined function: %s" % func_name)
-		return
-	
+		return null
+
 	var func_def = user_functions[func_name]
-	
-	# Evaluate arguments
+
+	# Evaluate arguments (an argument may itself contain a function call -> await)
 	var args = []
 	for arg in call.arguments:
-		args.append(_evaluate_expression(arg))
-	
-	# Check parameter count
+		args.append(await _evaluate_expression(arg))
+
 	if args.size() != func_def.parameters.size():
 		_error("Function %s expects %d arguments, got %d" % [func_name, func_def.parameters.size(), args.size()])
-		return
-	
-	# Create new scope for function
+		return null
+
 	_push_scope()
-	
-	# Build params dictionary for signal
+
 	var params_dict = {}
 	for i in range(func_def.parameters.size()):
 		params_dict[func_def.parameters[i]] = args[i]
-	
-	# Emit function entered signal
+
 	current_call_depth += 1
 	function_entered.emit(func_name, params_dict)
-	
-	# Bind parameters
+
 	for i in range(func_def.parameters.size()):
 		_set_variable(func_def.parameters[i], args[i])
-	
-	# Execute function body
+
+	# Save/restore caller return state so nested calls don't clobber each other.
 	var previous_return_state = should_return
+	var previous_return_value = return_value
 	should_return = false
-	
+	return_value = null
+
 	for statement in func_def.body:
 		await _execute_statement(statement)
 		if should_return:
 			break
-	
+
+	var result = return_value
 	should_return = previous_return_state
-	
-	# Emit function exited signal
+	return_value = previous_return_value
+
 	current_call_depth -= 1
-	function_exited.emit(func_name, return_value)
-	
+	function_exited.emit(func_name, result)
+
 	_pop_scope()
+	return result
 
 func _execute_assignment(assign: ASTNodes.AssignmentNode):
-	var value = _evaluate_expression(assign.value)
+	var value = await _evaluate_expression(assign.value)
 	_set_variable(assign.variable_name, value)
 	# Emit signal for variable change
 	variable_changed.emit(assign.variable_name, value)
 
 func _execute_if(if_node: ASTNodes.IfNode):
-	var condition = _evaluate_expression(if_node.condition)
+	var condition = await _evaluate_expression(if_node.condition)
 	
 	if _is_truthy(condition):
 		# Execute true branch
@@ -262,7 +277,7 @@ func _execute_if(if_node: ASTNodes.IfNode):
 		# Check elif branches
 		var executed = false
 		for elif_branch in if_node.elif_branches:
-			var elif_condition = _evaluate_expression(elif_branch.condition)
+			var elif_condition = await _evaluate_expression(elif_branch.condition)
 			if _is_truthy(elif_condition):
 				await _execute_block(elif_branch.body)
 				executed = true
@@ -274,7 +289,7 @@ func _execute_if(if_node: ASTNodes.IfNode):
 
 func _execute_for(for_node: ASTNodes.ForNode):
 	# Evaluate iterable
-	var iterable = _evaluate_expression(for_node.iterable)
+	var iterable = await _evaluate_expression(for_node.iterable)
 	
 	if not iterable is Array:
 		_error("For loop iterable must be an array")
@@ -295,7 +310,7 @@ func _execute_while(while_node: ASTNodes.WhileNode):
 	_push_scope()
 	
 	var loop_count = 0
-	while _is_truthy(_evaluate_expression(while_node.condition)):
+	while _is_truthy(await _evaluate_expression(while_node.condition)):
 		await _execute_block(while_node.body)
 		
 		if should_return or not is_running:
@@ -318,7 +333,7 @@ func _execute_do_while(do_while_node: ASTNodes.DoWhileNode):
 		if should_return or not is_running:
 			break
 		
-		if not _is_truthy(_evaluate_expression(do_while_node.condition)):
+		if not _is_truthy(await _evaluate_expression(do_while_node.condition)):
 			break
 		
 		loop_count += 1
@@ -330,7 +345,7 @@ func _execute_do_while(do_while_node: ASTNodes.DoWhileNode):
 
 func _execute_return(return_node: ASTNodes.ReturnNode):
 	if return_node.value:
-		return_value = _evaluate_expression(return_node.value)
+		return_value = await _evaluate_expression(return_node.value)
 	else:
 		return_value = null
 	should_return = true
@@ -354,28 +369,36 @@ func _evaluate_expression(expr):
 	
 	elif expr is ASTNodes.StringNode:
 		return expr.value
-	
+
+	elif expr is ASTNodes.BooleanNode:
+		return expr.value
+
+	elif expr is ASTNodes.NullNode:
+		return null
+
 	elif expr is ASTNodes.IdentifierNode:
 		return _get_variable(expr.name)
 	
 	elif expr is ASTNodes.BinaryOpNode:
-		return _evaluate_binary_op(expr)
-	
+		return await _evaluate_binary_op(expr)
+
 	elif expr is ASTNodes.UnaryOpNode:
-		return _evaluate_unary_op(expr)
-	
+		return await _evaluate_unary_op(expr)
+
 	elif expr is ASTNodes.RangeNode:
-		return _evaluate_range(expr)
-	
+		return await _evaluate_range(expr)
+
 	elif expr is ASTNodes.CallNode:
-		# Check if it's a sensing function (built-in query functions)
 		var func_name = expr.function_name
+		# Built-in sensing functions return a value directly
 		if func_name in ["frontIsClear", "leftIsClear", "rightIsClear", "goalReached", "onHazard"]:
 			return _evaluate_sensing_function(func_name)
-		
-		# For user-defined functions, we can't await here since this is sync
-		_error("Function calls in expressions not yet supported (except sensing functions)")
-		return null
+		# Movement commands don't return a value
+		if func_name in ["move", "turnRight", "turnLeft", "turnBack"]:
+			_error("Command '%s()' doesn't return a value and can't be used in an expression" % func_name)
+			return null
+		# User-defined function used for its return value
+		return await _invoke_function(expr)
 	
 	else:
 		_error("Unknown expression type: %s" % expr.node_type)
@@ -403,8 +426,8 @@ func _evaluate_sensing_function(func_name: String):
 			return false
 
 func _evaluate_binary_op(op: ASTNodes.BinaryOpNode):
-	var left = _evaluate_expression(op.left)
-	var right = _evaluate_expression(op.right)
+	var left = await _evaluate_expression(op.left)
+	var right = await _evaluate_expression(op.right)
 	
 	match op.operator:
 		"+":
@@ -422,6 +445,9 @@ func _evaluate_binary_op(op: ASTNodes.BinaryOpNode):
 			if right == 0:
 				_error("Modulo by zero")
 				return 0
+			# GDScript's % is integer-only; use fmod when either side is a float.
+			if left is float or right is float:
+				return fmod(left, right)
 			return left % right
 		"==":
 			return left == right
@@ -444,7 +470,7 @@ func _evaluate_binary_op(op: ASTNodes.BinaryOpNode):
 			return null
 
 func _evaluate_unary_op(op: ASTNodes.UnaryOpNode):
-	var operand = _evaluate_expression(op.operand)
+	var operand = await _evaluate_expression(op.operand)
 	
 	match op.operator:
 		"-":
@@ -455,13 +481,13 @@ func _evaluate_unary_op(op: ASTNodes.UnaryOpNode):
 			_error("Unknown unary operator: %s" % op.operator)
 			return null
 
-func _evaluate_range(range_node: ASTNodes.RangeNode) -> Array:
-	var start = _evaluate_expression(range_node.start)
-	var end = _evaluate_expression(range_node.end)
+func _evaluate_range(range_node: ASTNodes.RangeNode):
+	var start = await _evaluate_expression(range_node.start)
+	var end = await _evaluate_expression(range_node.end)
 	var step = 1
-	
+
 	if range_node.step:
-		step = _evaluate_expression(range_node.step)
+		step = await _evaluate_expression(range_node.step)
 	
 	if not (start is int or start is float):
 		_error("Range start must be a number")
@@ -538,12 +564,12 @@ func _get_variable(name: String):
 func set_debug_manager(manager: DebugManager):
 	"""Attach a debug manager to control execution"""
 	debug_manager = manager
-	print("DEBUG [Interpreter]: Debug manager attached")
+	Dbg.p("DEBUG [Interpreter]: Debug manager attached")
 
 func set_execution_speed(speed: float):
 	"""Set execution speed multiplier (0.25x to 5x)"""
 	execution_speed = clamp(speed, 0.25, 5.0)
-	print("DEBUG [Interpreter]: Execution speed set to %.2fx" % execution_speed)
+	Dbg.p("DEBUG [Interpreter]: Execution speed set to %.2fx" % execution_speed)
 
 func reset_debug_state():
 	"""Reset debug state for new execution"""

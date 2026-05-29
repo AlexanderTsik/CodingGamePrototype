@@ -51,18 +51,18 @@ func _ensure_profile(token: String, refresh_token: String, user_id: String) -> v
 
 # ── Solutions ─────────────────────────────────────────────────────────────────
 
-func submit_solution(level_id: String, code: String, move_count: int, code_length: int) -> Dictionary:
+func submit_solution(level_id: String, code: String, move_count: int, _code_length: int = 0) -> Dictionary:
 	if not _auth.is_logged_in():
 		return {"error": "not_logged_in"}
+	# Submit through the validated Edge Function rather than inserting directly:
+	# it derives user_id from the JWT, recomputes code_length, runs a plausibility
+	# check, and keeps your best score. (_code_length is ignored — recomputed server-side.)
 	var body = JSON.stringify({
-		"user_id":     _auth.get_user_id(),
-		"level_id":    level_id,
-		"code":        code,
-		"move_count":  move_count,
-		"code_length": code_length
+		"level_id":   level_id,
+		"code":       code,
+		"move_count": move_count,
 	})
-	return await _post("%s/rest/v1/solutions" % SUPABASE_URL, body, true,
-			{"Prefer": "resolution=merge-duplicates"})
+	return await _post("%s/functions/v1/submit-solution" % SUPABASE_URL, body, true)
 
 func get_leaderboard(level_id: String, limit: int = 10) -> Array:
 	var url = "%s/rest/v1/solutions?level_id=eq.%s&select=move_count,code_length,profiles(username)&order=move_count.asc,code_length.asc&limit=%d" % [SUPABASE_URL, level_id, limit]

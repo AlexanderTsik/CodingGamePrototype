@@ -1,0 +1,57 @@
+extends "res://test/ld_test.gd"
+
+var _defs
+
+func _solve(layout: String, code: String) -> Dictionary:
+	var gm = GridManager.new()
+	gm.load_level_from_string(layout)
+	var player = load("res://scripts/core/player.gd").new()
+	player.grid_manager = gm
+	tree.root.add_child(gm)
+	tree.root.add_child(player)
+	player.reset_position()
+	var interp = Interpreter.new()
+	interp.instant = true
+	tree.root.add_child(interp)
+	await interp.execute(Parser.new().parse(Lexer.new().tokenize(code)), player)
+	var res = {"on_goal": player.is_on_goal(), "pos": player.grid_position}
+	interp.free()
+	player.free()
+	gm.free()
+	return res
+
+func run() -> void:
+	await tree.process_frame
+	_defs = load("res://scripts/levels/level_definitions.gd").new()
+
+	section("all 10 builtin levels are structurally valid")
+	for n in range(1, 11):
+		var lv = _defs.get_level(n)
+		assert_false(lv.is_empty(), "level %d exists" % n)
+		var gm = GridManager.new()
+		gm.load_level_from_string(lv["layout"])
+		assert_true(gm.goal_positions.size() >= 1, "level %d has a goal" % n)
+		assert_true(gm.is_walkable(gm.start_position), "level %d start is walkable" % n)
+		if gm.goal_positions.size() >= 1:
+			assert_true(gm.is_walkable(gm.goal_positions[0]), "level %d goal is walkable" % n)
+			assert_ne(gm.start_position, gm.goal_positions[0], "level %d start != goal" % n)
+		assert_true(GridManager.is_layout_solvable(lv["layout"]), "level %d is BFS-solvable" % n)
+		gm.free()
+
+	section("Level 1 solves with its documented path")
+	var r1 = await _solve(_defs.get_level(1)["layout"],
+		"for (i in range(7)) { move() }\nturnRight()\nfor (i in range(4)) { move() }")
+	assert_true(r1["on_goal"], "level 1 reaches goal (ended at %s)" % str(r1["pos"]))
+
+	# The right-hand-rule is the intended solution for the maze levels.
+	var rhr := "while (not goalReached()) { if (rightIsClear()) { turnRight() move() } elif (frontIsClear()) { move() } else { turnLeft() } }"
+
+	section("Level 9 solves with the right-hand rule")
+	var r9 = await _solve(_defs.get_level(9)["layout"], rhr)
+	assert_true(r9["on_goal"], "level 9 reaches goal (ended at %s)" % str(r9["pos"]))
+
+	section("Level 10 solves with the right-hand rule")
+	var r10 = await _solve(_defs.get_level(10)["layout"], rhr)
+	assert_true(r10["on_goal"], "level 10 reaches goal (ended at %s)" % str(r10["pos"]))
+
+	_defs.free()

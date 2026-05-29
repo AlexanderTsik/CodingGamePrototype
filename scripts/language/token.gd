@@ -19,6 +19,9 @@ enum TokenType {
 	RANGE,
 	FUNCTION,
 	RETURN,
+	TRUE,
+	FALSE,
+	NULL,
 	
 	# Operators
 	EQUALS,           # ==
@@ -48,8 +51,7 @@ enum TokenType {
 	NEWLINE,          # \n
 	
 	# Special
-	EOF,
-	COMMAND           # Built-in commands like moveRight(), moveLeft(), etc.
+	EOF
 }
 
 ## Token Class

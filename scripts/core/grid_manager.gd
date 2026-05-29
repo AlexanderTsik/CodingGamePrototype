@@ -68,7 +68,7 @@ func load_level_from_string(layout: String):
 	# Pair teleporters (first with second, third with fourth, etc.)
 	_pair_teleporters(teleporter_positions)
 	
-	print("GridManager: Loaded level %dx%d, start at %v, %d goals, %d teleporter pairs" % 
+	Dbg.p("GridManager: Loaded level %dx%d, start at %v, %d goals, %d teleporter pairs" % 
 		[grid_width, grid_height, start_position, goal_positions.size(), teleporter_pairs.size()])
 
 func _pair_teleporters(positions: Array[Vector2i]):
@@ -122,6 +122,50 @@ func is_goal(grid_pos: Vector2i) -> bool:
 	"""Check if this cell is a goal"""
 	return get_cell_at(grid_pos) == CellType.Type.GOAL
 
+static func is_layout_solvable(layout: String) -> bool:
+	"""BFS from the Start cell to any Goal. Walls and doors block movement
+	(matching is_walkable); hazards/teleporters are treated as passable, so this
+	is a conservative reachability check that catches walled-off goals.
+	Returns false if there's no start, no goal, or no clear path."""
+	var rows: Array[String] = []
+	for line in layout.split("\n"):
+		if line.strip_edges() != "":
+			rows.append(line)
+	if rows.is_empty():
+		return false
+
+	var start := Vector2i(-1, -1)
+	var goals := {}
+	for y in range(rows.size()):
+		var line: String = rows[y]
+		for x in range(line.length()):
+			match CellType.from_char(line[x]):
+				CellType.Type.START: start = Vector2i(x, y)
+				CellType.Type.GOAL:  goals[Vector2i(x, y)] = true
+	if start == Vector2i(-1, -1) or goals.is_empty():
+		return false
+
+	var visited := {start: true}
+	var queue: Array[Vector2i] = [start]
+	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	while not queue.is_empty():
+		var cur: Vector2i = queue.pop_front()
+		if goals.has(cur):
+			return true
+		for d in dirs:
+			var nx: Vector2i = cur + d
+			if visited.has(nx) or nx.y < 0 or nx.y >= rows.size():
+				continue
+			var rline: String = rows[nx.y]
+			if nx.x < 0 or nx.x >= rline.length():
+				continue
+			var ct = CellType.from_char(rline[nx.x])
+			if ct == CellType.Type.WALL or ct == CellType.Type.DOOR:
+				continue
+			visited[nx] = true
+			queue.append(nx)
+	return false
+
 # Cell property methods
 func set_cell_property(pos: Vector2i, key: String, value):
 	"""Set a property for a specific cell"""
@@ -167,27 +211,27 @@ func check_player_position(grid_pos: Vector2i):
 	# Check for hazards
 	if is_hazard(grid_pos):
 		player_died.emit()
-		print("GridManager: Player hit hazard!")
+		Dbg.p("GridManager: Player hit hazard!")
 		return
 	
 	# Check for goal
 	if is_goal(grid_pos):
 		level_completed.emit()
-		print("GridManager: Level completed!")
+		Dbg.p("GridManager: Level completed!")
 		return
 	
 	# Check for teleporter
 	if cell_type == CellType.Type.TELEPORTER:
 		cell_activated.emit(grid_pos, cell_type)
-		print("GridManager: Player entered teleporter at %v" % grid_pos)
+		Dbg.p("GridManager: Player entered teleporter at %v" % grid_pos)
 	
 	# Check for collectibles
 	elif cell_type == CellType.Type.KEY or cell_type == CellType.Type.COIN or cell_type == CellType.Type.GEM:
 		item_collected.emit(cell_type, grid_pos)
 		var type_name = CellType.Type.keys()[cell_type]
-		print("GridManager: Player collected %s at %v" % [type_name, grid_pos])
+		Dbg.p("GridManager: Player collected %s at %v" % [type_name, grid_pos])
 	
 	# Check for switches
 	elif cell_type == CellType.Type.SWITCH:
 		cell_activated.emit(grid_pos, cell_type)
-		print("GridManager: Player activated switch at %v" % grid_pos)
+		Dbg.p("GridManager: Player activated switch at %v" % grid_pos)
