@@ -29,14 +29,15 @@ export default function AuthPage() {
         router.push("/");
         router.refresh();
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { username: username || email.split("@")[0] } },
+        });
         if (error) { setError(error.message); return; }
-        if (data.user) {
-          await supabase.from("profiles").upsert({
-            id: data.user.id,
-            username: username || email.split("@")[0],
-          });
-        }
+        // The profile row (with username) is created server-side by the
+        // on_auth_user_created trigger — no client-side insert needed, which
+        // also works when email confirmation is on (no session yet).
         setSuccess("Account created! You can now sign in.");
         setMode("login");
       }

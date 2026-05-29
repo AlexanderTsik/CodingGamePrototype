@@ -1,10 +1,13 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { cache } from "react";
+import type { Metadata } from "next";
 
 export const revalidate = 30;
 
-async function getLevel(id: string) {
+// Wrapped in cache() so generateMetadata and the page body share one query per request.
+const getLevel = cache(async (id: string) => {
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase
     .from("levels")
@@ -13,6 +16,26 @@ async function getLevel(id: string) {
     .eq("is_published", true)
     .single();
   return data;
+});
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const level = await getLevel(id);
+  if (!level) return { title: "Level not found — LediBug" };
+  const author = (level.profiles as { username: string } | null)?.username;
+  const title = `${level.name}${author ? " by " + author : ""} — LediBug`;
+  const description =
+    level.description || `Solve "${level.name}" — a community LediBug coding puzzle.`;
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary", title, description },
+  };
 }
 
 type LeaderboardEntry = {
