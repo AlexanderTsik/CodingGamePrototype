@@ -3,6 +3,10 @@
 
 extends Node
 
+# Set to true during development to pre-fill levels with working solutions.
+# Set to false before production / release builds.
+const DEV_MODE = true
+
 var all_levels = [
 	# ──────────────────────────────────────────────────────────────────────
 	# Level 1 — Sequential Commands
@@ -34,6 +38,10 @@ var all_levels = [
 # Navigate the L-shaped corridor to reach the goal!
 move()
 move()
+""",
+		"solution_code": """for (i in range(7)) { move() }
+turnRight()
+for (i in range(4)) { move() }
 """,
 		"hint_text": """Level 1 — Sequential Commands
 
@@ -88,6 +96,11 @@ move()
 move()
 move()
 # ...keep going, or replace this with a loop!
+""",
+		"solution_code": """turnRight()
+for (i in range(7)) { move() }
+turnLeft()
+for (i in range(7)) { move() }
 """,
 		"hint_text": """Level 2 — For Loops
 
@@ -146,6 +159,14 @@ while (frontIsClear()) {
     move()
 }
 turnRight()
+""",
+		"solution_code": """while (frontIsClear()) { move() }
+turnRight()
+while (frontIsClear()) { move() }
+turnLeft()
+while (frontIsClear()) { move() }
+turnRight()
+while (frontIsClear()) { move() }
 """,
 		"hint_text": """Level 3 — While Loops + Sensors
 
@@ -218,6 +239,12 @@ if (rightIsClear()) {
     turnLeft()
 }
 """,
+		"solution_code": """while (frontIsClear()) { move() }
+if (rightIsClear()) { turnRight() } else { turnLeft() }
+while (frontIsClear()) { move() }
+if (rightIsClear()) { turnRight() } else { turnLeft() }
+while (frontIsClear()) { move() }
+""",
 		"hint_text": """Level 4 — If / Else
 
 An if/else runs one block OR the other,
@@ -288,6 +315,18 @@ function step() {
 step()
 # Call step() two more times, then one final move() to the goal.
 """,
+		"solution_code": """function step() {
+    move()
+    move()
+    turnRight()
+    move()
+    turnLeft()
+}
+step()
+step()
+step()
+move()
+""",
 		"hint_text": """Level 5 — Functions (DRY Principle)
 
 DRY = Don't Repeat Yourself.
@@ -344,6 +383,28 @@ With a function: 9 lines."""
 #.########
 #S########
 ##########""",
+		"variants": [
+			"""##########
+#.#.#.#G##
+#.#.#.#.##
+#.#.#.#.##
+#.#.#.#.##
+#.#.#.#.##
+#.......##
+#.########
+#S########
+##########""",
+			"""############
+#.#.#.#.#G##
+#.#.#.#.#.##
+#.#.#.#.#.##
+#.#.#.#.#.##
+#.#.#.#.#.##
+#.#.#.#.#.##
+#.........##
+#S##########
+############"""
+		],
 		"starter_code": """# Walk up each corridor and back, then step to the next one.
 # A loop inside a loop handles all the return trips!
 #
@@ -363,6 +424,17 @@ move()
 turnRight()
 
 # Your nested loop goes here...
+""",
+		"solution_code": """while (not goalReached()) {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
 """,
 		"hint_text": """Level 6 — Nested For Loops
 
@@ -414,6 +486,28 @@ Tip: turnBack() turns you 180 degrees."""
 #######.##
 ###G....##
 ##########""",
+		"variants": [
+			"""##########
+##########
+##########
+##########
+##########
+#####...##
+#####S#.##
+#######.##
+###G....##
+##########""",
+			"""############
+############
+############
+############
+#######...##
+#######.#.##
+#######S#.##
+#########.##
+#####G....##
+############"""
+		],
 		"starter_code": """# The path spirals outward — each arm is 1 step longer than the last.
 # Without a variable you need four separate for loops.
 # With a variable, one outer loop handles all four arms!
@@ -428,6 +522,17 @@ Tip: turnBack() turns you 180 degrees."""
 
 n = 1
 # Use n inside the inner loop, then increase it each iteration.
+""",
+		"solution_code": """while (not goalReached()) {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
 """,
 		"hint_text": """Level 7 — Variables
 
@@ -476,6 +581,28 @@ The spiral arms:
 #.########
 #S########
 ##########""",
+		"variants": [
+			"""##########
+#####G####
+#####.####
+#####.####
+#####.####
+#####.####
+#.....####
+#.########
+#S########
+##########""",
+			"""############
+#######G####
+#######.####
+#######.####
+#######.####
+#######.####
+#.......####
+#.##########
+#S##########
+############"""
+		],
 		"starter_code": """# Three corridor segments: 2 steps north, 4 east, 5 north.
 # Without a function you'd copy the for-loop three times.
 # With a parameter, write it once and call it with different values!
@@ -498,6 +625,17 @@ function walk(n) {
 
 walk(2)
 # Keep going with turnRight(), walk(4), turnLeft(), walk(5)
+""",
+		"solution_code": """while (not goalReached()) {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
 """,
 		"hint_text": """Level 8 — Functions with Parameters
 
@@ -548,12 +686,45 @@ That's the power of parameters."""
 #.##....##
 #S########
 ##########""",
+		"variants": [
+			"""##########
+##########
+########G#
+########.#
+########.#
+#######..#
+#....##.##
+#.##....##
+#S########
+##########""",
+			"""############
+############
+##########G#
+##########.#
+#######....#
+#######.####
+#.....#.####
+#.###...####
+#S##########
+############"""
+		],
 		"starter_code": """# The maze twists unpredictably — hard-coding each turn won't work.
 # Use the right-hand follower: always try to turn right first.
 #
 # Key new syntax: not, and, or
 
 while (not goalReached()) {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"solution_code": """while (not goalReached()) {
     if (rightIsClear()) {
         turnRight()
         move()
@@ -619,6 +790,28 @@ each step — no manual counting needed!"""
 #.########
 #S########
 ##########""",
+		"variants": [
+			"""##########
+#....#..G#
+#.##.#.###
+#.##.#.###
+#.##...###
+#.########
+#.########
+#.########
+#S########
+##########""",
+			"""############
+#.....#...G#
+#.###.#.####
+#...#.#.####
+###.#...####
+###.########
+###.########
+###.########
+#S..########
+############"""
+		],
 		"starter_code": """# The ultimate challenge — use everything you've learned!
 #
 # Wrap your navigation logic in a function,
@@ -640,6 +833,17 @@ steps = 0
 while (not goalReached()) {
     followWall()
     steps = steps + 1
+}
+""",
+		"solution_code": """while (not goalReached()) {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
 }
 """,
 		"hint_text": """Level 10 — All Concepts
@@ -685,3 +889,32 @@ func get_level(level_id: int) -> Dictionary:
 func get_level_count() -> int:
 	"""Get total number of levels"""
 	return all_levels.size()
+
+func get_level_variants(level_id: int) -> Array[String]:
+	"""Return all layouts for a level; falls back to single-layout levels."""
+	var lv = get_level(level_id)
+	if lv.is_empty():
+		return []
+	if lv.has("variants") and lv["variants"] is Array and lv["variants"].size() > 0:
+		var variants: Array[String] = []
+		for layout in lv["variants"]:
+			variants.append(str(layout))
+		return variants
+	return [str(lv.get("layout", ""))]
+
+func get_level_variant_count(level_id: int) -> int:
+	return get_level_variants(level_id).size()
+
+func get_solution_code(level_id: int) -> String:
+	"""Return the working solution for a level (used for DEV_MODE and automated testing)."""
+	var lv = get_level(level_id)
+	return lv.get("solution_code", "") if not lv.is_empty() else ""
+
+func get_starter_or_solution(level_id: int) -> String:
+	"""Return solution_code if DEV_MODE is on, otherwise starter_code."""
+	var lv = get_level(level_id)
+	if lv.is_empty():
+		return ""
+	if DEV_MODE:
+		return lv.get("solution_code", lv.get("starter_code", ""))
+	return lv.get("starter_code", "")

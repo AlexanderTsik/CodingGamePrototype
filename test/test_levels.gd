@@ -38,6 +38,17 @@ func run() -> void:
 		assert_true(GridManager.is_layout_solvable(lv["layout"]), "level %d is BFS-solvable" % n)
 		gm.free()
 
+	section("levels 6+ expose multiple variants")
+	for n in range(1, 11):
+		var variant_count = _defs.get_level_variant_count(n)
+		if n <= 5:
+			assert_eq(variant_count, 1, "level %d stays single-variant" % n)
+		else:
+			assert_true(variant_count > 1, "level %d has multiple variants" % n)
+			var variants = _defs.get_level_variants(n)
+			for i in range(variants.size()):
+				assert_true(GridManager.is_layout_solvable(variants[i]), "level %d variant %d is BFS-solvable" % [n, i + 1])
+
 	section("Level 1 solves with its documented path")
 	var r1 = await _solve(_defs.get_level(1)["layout"],
 		"for (i in range(7)) { move() }\nturnRight()\nfor (i in range(4)) { move() }")
@@ -47,11 +58,13 @@ func run() -> void:
 	var rhr := "while (not goalReached()) { if (rightIsClear()) { turnRight() move() } elif (frontIsClear()) { move() } else { turnLeft() } }"
 
 	section("Level 9 solves with the right-hand rule")
-	var r9 = await _solve(_defs.get_level(9)["layout"], rhr)
-	assert_true(r9["on_goal"], "level 9 reaches goal (ended at %s)" % str(r9["pos"]))
+	for v in _defs.get_level_variants(9):
+		var r9 = await _solve(v, rhr)
+		assert_true(r9["on_goal"], "level 9 variant reaches goal (ended at %s)" % str(r9["pos"]))
 
 	section("Level 10 solves with the right-hand rule")
-	var r10 = await _solve(_defs.get_level(10)["layout"], rhr)
-	assert_true(r10["on_goal"], "level 10 reaches goal (ended at %s)" % str(r10["pos"]))
+	for v in _defs.get_level_variants(10):
+		var r10 = await _solve(v, rhr)
+		assert_true(r10["on_goal"], "level 10 variant reaches goal (ended at %s)" % str(r10["pos"]))
 
 	_defs.free()

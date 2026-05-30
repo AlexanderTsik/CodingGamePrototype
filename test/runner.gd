@@ -11,6 +11,7 @@ const TESTS := [
 	"res://test/test_grid_manager.gd",
 	"res://test/test_interpreter.gd",
 	"res://test/test_levels.gd",
+	"res://test/test_solutions.gd",
 ]
 
 func _initialize() -> void:

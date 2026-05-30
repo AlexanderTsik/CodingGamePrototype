@@ -3,6 +3,7 @@ class_name GridManager
 
 signal level_completed
 signal player_died
+signal variant_advanced(current_variant: int, total_variants: int)
 signal cell_activated(cell_pos: Vector2i, cell_type: CellType.Type)
 signal item_collected(item_type: CellType.Type, position: Vector2i)
 signal teleported(from_pos: Vector2i, to_pos: Vector2i)
@@ -16,6 +17,30 @@ var grid_height: int = 0
 var start_position: Vector2i = Vector2i(0, 0)
 var goal_positions: Array[Vector2i] = []
 var teleporter_pairs: Dictionary = {}  # {int id: [Vector2i pos1, Vector2i pos2]}
+var active_variants: Array[String] = []
+var current_variant_index: int = 0
+
+func set_active_variants(variants: Array[String]) -> void:
+	active_variants = variants.duplicate()
+	current_variant_index = 0
+
+func clear_active_variants() -> void:
+	active_variants.clear()
+	current_variant_index = 0
+
+func has_active_variants() -> bool:
+	return active_variants.size() > 0
+
+func get_total_variants() -> int:
+	return active_variants.size()
+
+func get_current_variant_number() -> int:
+	return current_variant_index + 1
+
+func get_current_variant_layout() -> String:
+	if has_active_variants() and current_variant_index >= 0 and current_variant_index < active_variants.size():
+		return active_variants[current_variant_index]
+	return ""
 
 func load_level_from_string(layout: String):
 	"""Parse ASCII art level layout into grid"""
@@ -216,6 +241,14 @@ func check_player_position(grid_pos: Vector2i):
 	
 	# Check for goal
 	if is_goal(grid_pos):
+		if has_active_variants() and current_variant_index < active_variants.size() - 1:
+			current_variant_index += 1
+			# Load the next variant's grid BEFORE signaling so listeners see
+			# consistent state and the player can continue running on new grid.
+			load_level_from_string(active_variants[current_variant_index])
+			variant_advanced.emit(get_current_variant_number(), get_total_variants())
+			Dbg.p("GridManager: Advanced to variant %d/%d" % [get_current_variant_number(), get_total_variants()])
+			return
 		level_completed.emit()
 		Dbg.p("GridManager: Level completed!")
 		return

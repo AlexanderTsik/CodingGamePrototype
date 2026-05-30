@@ -170,3 +170,50 @@ func run() -> void:
 	await _exec(c, "x = 0\nwhile (x == 0) { x = 0 }")
 	assert_ne(errs2[0], "", "iteration guard fired")
 	_teardown(c)
+
+	section("code re-runs from scratch on each variant")
+	var defs = load("res://scripts/levels/level_definitions.gd").new()
+	var variants = defs.get_level_variants(9)
+	var gm = GridManager.new()
+	gm.set_active_variants(variants)
+	gm.load_level_from_string(gm.get_current_variant_layout())
+
+	var player = load("res://scripts/core/player.gd").new()
+	player.grid_manager = gm
+	tree.root.add_child(gm)
+	tree.root.add_child(player)
+	player.reset_position()
+
+	var interp = Interpreter.new()
+	interp.instant = true
+	tree.root.add_child(interp)
+
+	var level_done := [false]
+	var variants_advanced := [0]
+	gm.level_completed.connect(func(): level_done[0] = true)
+
+	# When a variant is cleared, GridManager already loaded the new grid.
+	# Stop the interpreter so the outer loop can re-run from scratch — this
+	# mirrors what main.gd does in _on_variant_advanced / _on_execution_complete.
+	gm.variant_advanced.connect(func(_cur, _tot):
+		variants_advanced[0] += 1
+		interp.stop()
+	)
+
+	var rhr := "while (not goalReached()) { if (rightIsClear()) { turnRight() move() } elif (frontIsClear()) { move() } else { turnLeft() } }"
+	var ast = Parser.new().parse(Lexer.new().tokenize(rhr))
+
+	var safety := 0
+	while not level_done[0] and safety < 20:
+		player.reset_position()
+		await interp.execute(ast, player)
+		safety += 1
+
+	assert_true(level_done[0], "level completed after all variants solved")
+	assert_eq(gm.get_current_variant_number(), gm.get_total_variants(), "ended on final variant")
+	assert_true(variants_advanced[0] > 0, "at least one variant was advanced")
+
+	interp.free()
+	player.free()
+	gm.free()
+	defs.free()

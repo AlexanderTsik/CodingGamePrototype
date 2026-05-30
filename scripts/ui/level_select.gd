@@ -72,6 +72,7 @@ func _create_level_buttons() -> void:
 		var level_id  := i + 1
 		var level_def : Dictionary = level_definitions.get_level(level_id)
 		var difficulty : int = level_def.get("difficulty", 1)
+		var variant_count: int = level_definitions.get_level_variant_count(level_id)
 
 		# ── Card shell ──────────────────────────────────────────────────────
 		var card := PanelContainer.new()
@@ -117,6 +118,14 @@ func _create_level_buttons() -> void:
 				diff_lbl.text = "Hard"
 				diff_lbl.add_theme_color_override("font_color", Color(0.90, 0.38, 0.38, 1))
 
+		var variants_lbl := Label.new()
+		variants_lbl.add_theme_font_size_override("font_size", 11)
+		variants_lbl.add_theme_color_override("font_color", Color(0.56, 0.66, 0.78, 1))
+		if variant_count > 1:
+			variants_lbl.text = "%d variants (one code run)" % variant_count
+		else:
+			variants_lbl.text = "Single variant"
+
 		var spacer := Control.new()
 		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
@@ -132,6 +141,7 @@ func _create_level_buttons() -> void:
 		vbox.add_child(num_lbl)
 		vbox.add_child(name_lbl)
 		vbox.add_child(diff_lbl)
+		vbox.add_child(variants_lbl)
 		vbox.add_child(spacer)
 		vbox.add_child(play_btn)
 		inner.add_child(vbox)

@@ -47,3 +47,27 @@ func run() -> void:
 	gm4.tile_size = 64
 	assert_eq(gm4.world_to_grid(gm4.grid_to_world(Vector2i(1, 1))), Vector2i(1, 1), "round-trip")
 	gm4.free()
+
+	section("variant progression gates final completion")
+	var gm5 = GridManager.new()
+	gm5.set_active_variants([
+		"#####\n#SG##\n#####",
+		"#####\n#S.G#\n#####"
+	])
+	gm5.load_level_from_string(gm5.get_current_variant_layout())
+
+	var advanced = [0]
+	var completed = [0]
+	gm5.variant_advanced.connect(func(_cur, _tot): advanced[0] += 1)
+	gm5.level_completed.connect(func(): completed[0] += 1)
+
+	# After this call, GridManager detects goal on variant 1, self-loads variant 2
+	gm5.check_player_position(Vector2i(2, 1))
+	assert_eq(advanced[0], 1, "first variant advances")
+	assert_eq(completed[0], 0, "not complete after first variant")
+	assert_eq(gm5.get_current_variant_number(), 2, "moved to variant 2")
+
+	# Grid is already loaded with variant 2 layout by GridManager
+	gm5.check_player_position(Vector2i(3, 1))
+	assert_eq(completed[0], 1, "completes on final variant")
+	gm5.free()

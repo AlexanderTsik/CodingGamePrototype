@@ -138,4 +138,12 @@ func _draw_grid_lines(cols: int, rows: int, cs: int):
 		draw_line(Vector2(0, i * cs), Vector2(cols * cs, i * cs), lc, 1.0)
 
 func refresh():
+	# Immediately recalculate tile_size so anything that depends on world
+	# coordinates (player.reset_position, move animations) uses the correct
+	# value — don't wait for the next _draw() frame.
+	if grid_manager:
+		var cs = _calc_cell_size()
+		if grid_manager.tile_size != cs:
+			grid_manager.tile_size = cs
+			cell_size_changed.emit(cs)
 	queue_redraw()

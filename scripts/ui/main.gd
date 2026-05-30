@@ -82,7 +82,21 @@ var current_level_source: String = "builtin"
 # Cached level dict — needed so we can restart custom levels (which aren't
 # in level_definitions) without re-fetching from disk or the network.
 var current_level_dict: Dictionary = {}
+var current_level_variants: Array[String] = []
 var level_definitions: Node
+
+# Variant preview bar (numbered buttons at the bottom of the game panel)
+var _variant_bar_panel: PanelContainer = null
+var _variant_btn_row: HBoxContainer = null
+var _variant_buttons: Array[Button] = []
+
+# Set when a variant goal was reached mid-run; causes _on_execution_complete
+# to re-execute the code from scratch on the new variant instead of finishing.
+var _rerun_after_variant: bool = false
+
+# One-time intro popup shown the first time a variant level is loaded.
+var _variant_intro_popup: AcceptDialog = null
+var _shown_variant_intro: bool = false
 
 # Win / leaderboard popup (built + managed by win_popup.gd)
 var _win_popup: WinPopup
@@ -218,6 +232,10 @@ func _ready():
 	# Setup help button and popup
 	_setup_help_system()
 
+	# Setup variant preview bar and first-time intro popup
+	_setup_variant_bar()
+	_setup_variant_intro_popup()
+
 	# Setup zoom + hints toolbar (sits between button bar and code editor)
 	_setup_editor_toolbar()
 
@@ -260,6 +278,7 @@ func load_level(level_id: int):
 	current_level_id = level_id
 	current_level_source = "builtin"
 	current_level_dict = {}
+	current_level_variants.clear()
 	# Built-in levels do have a "Next Level" — re-enable the button
 	# (it's hidden for custom levels via _load_custom_level).
 	next_level_button.visible = true
@@ -280,35 +299,40 @@ func load_level(level_id: int):
 		# Connect signals
 		grid_manager.level_completed.connect(_on_level_completed)
 		grid_manager.player_died.connect(_on_player_died)
-	
-	grid_manager.load_level_from_string(level_def["layout"])
-	
-	# Connect grid manager to player
-	if player:
-		player.grid_manager = grid_manager
-		player.reset_position()
-	
-	# Explicitly set grid manager reference and refresh grid visual
-	var grid_bg = get_node("HSplitContainer/GamePanel/GridBackground")
-	if grid_bg:
-		grid_bg.grid_manager = grid_manager
-		if grid_bg.has_method("refresh"):
-			grid_bg.refresh()
+		grid_manager.variant_advanced.connect(_on_variant_advanced)
+
+	if level_id > 5 and level_def.has("variants") and level_def["variants"] is Array and level_def["variants"].size() > 0:
+		for layout in level_def["variants"]:
+			current_level_variants.append(str(layout))
+		grid_manager.set_active_variants(current_level_variants)
+		_apply_current_variant_layout()
+	else:
+		grid_manager.clear_active_variants()
+		grid_manager.load_level_from_string(level_def["layout"])
+		_reset_player_and_refresh_grid()
 	
 	# Reset level state
 	is_level_complete = false
 	player_is_dead = false
 	next_level_button.disabled = true
 	
-	# Update code editor with starter code
-	code_input.text = level_def["starter_code"]
+	# Update code editor with starter code (or solution if DEV_MODE is on)
+	code_input.text = level_definitions.get_starter_or_solution(level_id)
 	
 	# Update title
-	title_label.text = "Level %d: %s" % [level_id, level_def["level_name"]]
+	_update_title_with_variant(level_def["level_name"])
 	
 	# Update output with hint
-	output_label.text = level_def["hint_text"]
-	
+	if current_level_variants.size() > 0:
+		output_label.text = "%s\n\nVariant 1/%d — click the numbered buttons below the grid to preview each variation." % [level_def["hint_text"], current_level_variants.size()]
+	else:
+		output_label.text = level_def["hint_text"]
+
+	# Build / hide the variant preview strip and trigger intro popup.
+	_update_variant_bar()
+	if current_level_variants.size() > 0:
+		_show_variant_intro_if_needed()
+
 	Dbg.p("Loaded Level %d: %s" % [level_id, level_def["level_name"]])
 
 func _load_custom_level(level_def: Dictionary):
@@ -316,6 +340,7 @@ func _load_custom_level(level_def: Dictionary):
 	# Cache the full dict so Restart can reload without a re-fetch / re-read.
 	current_level_dict = level_def
 	current_level_source = level_def.get("level_source", "local")
+	current_level_variants.clear()
 	# current_level_id stays as a sentinel for non-builtin levels — never used
 	# for lookup in level_definitions. The real ID lives in level_def["level_id"]
 	# (UUID for community, absent for local).
@@ -335,20 +360,11 @@ func _load_custom_level(level_def: Dictionary):
 		# Connect signals
 		grid_manager.level_completed.connect(_on_level_completed)
 		grid_manager.player_died.connect(_on_player_died)
-	
+		grid_manager.variant_advanced.connect(_on_variant_advanced)
+
+	grid_manager.clear_active_variants()
 	grid_manager.load_level_from_string(level_def["layout"])
-	
-	# Connect grid manager to player
-	if player:
-		player.grid_manager = grid_manager
-		player.reset_position()
-	
-	# Explicitly set grid manager reference and refresh grid visual
-	var grid_bg = get_node("HSplitContainer/GamePanel/GridBackground")
-	if grid_bg:
-		grid_bg.grid_manager = grid_manager
-		if grid_bg.has_method("refresh"):
-			grid_bg.refresh()
+	_reset_player_and_refresh_grid()
 	
 	# Reset level state
 	is_level_complete = false
@@ -369,7 +385,229 @@ func _load_custom_level(level_def: Dictionary):
 	# Update output with hint
 	output_label.text = level_def.get("hint_text", "Complete your custom level!")
 
+	# Custom levels never have variants — hide the preview bar.
+	_update_variant_bar()
+
 	Dbg.p("Loaded Custom Level: %s (source: %s)" % [lvl_name, current_level_source])
+
+func _reset_player_and_refresh_grid(preserve_move_count: bool = false) -> void:
+	var previous_moves := 0
+	if preserve_move_count and player:
+		previous_moves = player.move_count
+
+	# Refresh grid visual FIRST so tile_size is recalculated for the new
+	# grid dimensions before the player calculates its world position.
+	var grid_bg = get_node("HSplitContainer/GamePanel/GridBackground")
+	if grid_bg:
+		grid_bg.grid_manager = grid_manager
+		if grid_bg.has_method("refresh"):
+			grid_bg.refresh()
+
+	if player:
+		player.grid_manager = grid_manager
+		player.reset_position()
+		if preserve_move_count:
+			player.move_count = previous_moves
+
+func _apply_current_variant_layout(preserve_move_count: bool = false) -> void:
+	"""Load the current variant layout into the grid and reset player/visuals.
+	Used for initial load and new-run resets. During mid-run transitions the
+	grid is already loaded by GridManager itself — see _on_variant_advanced."""
+	if not grid_manager:
+		return
+	var layout := grid_manager.get_current_variant_layout()
+	if layout == "":
+		return
+	grid_manager.load_level_from_string(layout)
+	_reset_player_and_refresh_grid(preserve_move_count)
+
+func _update_title_with_variant(level_name: String) -> void:
+	if current_level_source == "builtin" and grid_manager and grid_manager.has_active_variants():
+		title_label.text = "Level %d: %s (Variant %d/%d)" % [
+			current_level_id,
+			level_name,
+			grid_manager.get_current_variant_number(),
+			grid_manager.get_total_variants()
+		]
+		return
+	title_label.text = "Level %d: %s" % [current_level_id, level_name]
+
+func _on_variant_advanced(current_variant: int, total_variants: int) -> void:
+	# GridManager already loaded the new variant's grid.
+	# Stop the current interpreter run — _on_execution_complete will detect
+	# _rerun_after_variant and re-execute the full code from scratch on the new grid.
+	_rerun_after_variant = true
+	code_executor.stop_execution()
+	var level_def = level_definitions.get_level(current_level_id)
+	_update_title_with_variant(level_def.get("level_name", "Level"))
+	output_label.text = "Variant %d/%d solved! Re-running your code for variant %d/%d..." % [
+		current_variant - 1,
+		total_variants,
+		current_variant,
+		total_variants
+	]
+	output_label.add_theme_color_override("font_color", Color(0.40, 0.90, 0.55, 1))
+	_highlight_variant_button(current_variant - 1)
+	Dbg.p("Variant %d/%d solved, will re-run code from scratch" % [current_variant - 1, total_variants])
+
+func _reset_variant_state_for_new_run() -> void:
+	if current_level_source != "builtin" or current_level_variants.size() == 0 or not grid_manager:
+		return
+	_rerun_after_variant = false
+	grid_manager.set_active_variants(current_level_variants)
+	_apply_current_variant_layout()
+	_highlight_variant_button(0)
+	_set_variant_bar_interactive(false)
+	var level_def = level_definitions.get_level(current_level_id)
+	_update_title_with_variant(level_def.get("level_name", "Level"))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Variant preview bar
+# ─────────────────────────────────────────────────────────────────────────────
+
+func _setup_variant_bar() -> void:
+	"""Create the variant preview strip anchored to the bottom of the game panel."""
+	var grid_bg = get_node("HSplitContainer/GamePanel/GridBackground")
+
+	_variant_bar_panel = PanelContainer.new()
+	_variant_bar_panel.name = "VariantBar"
+
+	# Anchor to the bottom edge of GridBackground (fills its full width).
+	_variant_bar_panel.anchor_left   = 0.0
+	_variant_bar_panel.anchor_right  = 1.0
+	_variant_bar_panel.anchor_top    = 1.0
+	_variant_bar_panel.anchor_bottom = 1.0
+	_variant_bar_panel.offset_top    = -48.0
+	_variant_bar_panel.offset_bottom = 0.0
+	_variant_bar_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.07, 0.08, 0.13, 0.92)
+	style.border_width_top = 1
+	style.border_color = Color(0.28, 0.32, 0.52, 1.0)
+	_variant_bar_panel.add_theme_stylebox_override("panel", style)
+
+	_variant_btn_row = HBoxContainer.new()
+	_variant_btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_variant_btn_row.add_theme_constant_override("separation", 6)
+	_variant_bar_panel.add_child(_variant_btn_row)
+
+	var lbl = Label.new()
+	lbl.text = "Preview variant:"
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", Color(0.60, 0.65, 0.85, 1.0))
+	_variant_btn_row.add_child(lbl)
+
+	grid_bg.add_child(_variant_bar_panel)
+	_variant_bar_panel.visible = false
+
+func _update_variant_bar() -> void:
+	"""Rebuild variant buttons to match current_level_variants."""
+	if not _variant_bar_panel or not _variant_btn_row:
+		return
+
+	# Remove old numbered buttons (keep the label, which is child 0).
+	for btn in _variant_buttons:
+		_variant_btn_row.remove_child(btn)
+		btn.queue_free()
+	_variant_buttons.clear()
+
+	var count = current_level_variants.size()
+	if count == 0:
+		_variant_bar_panel.visible = false
+		return
+
+	for i in range(count):
+		var btn = Button.new()
+		btn.text = str(i + 1)
+		btn.tooltip_text = "Preview Variant %d" % (i + 1)
+		btn.custom_minimum_size = Vector2(36, 28)
+		var idx = i  # capture for lambda
+		btn.pressed.connect(func(): _on_variant_preview_pressed(idx))
+		_variant_btn_row.add_child(btn)
+		_variant_buttons.append(btn)
+
+	_variant_bar_panel.visible = true
+	_highlight_variant_button(0)
+
+func _highlight_variant_button(idx: int) -> void:
+	"""Visually mark button `idx` as the active variant."""
+	var active_style = StyleBoxFlat.new()
+	active_style.bg_color = Color(0.18, 0.45, 0.82, 1.0)
+	active_style.border_width_left   = 2
+	active_style.border_width_right  = 2
+	active_style.border_width_top    = 2
+	active_style.border_width_bottom = 2
+	active_style.border_color = Color(0.40, 0.70, 1.0, 1.0)
+	active_style.corner_radius_top_left     = 4
+	active_style.corner_radius_top_right    = 4
+	active_style.corner_radius_bottom_left  = 4
+	active_style.corner_radius_bottom_right = 4
+
+	for i in range(_variant_buttons.size()):
+		var btn = _variant_buttons[i]
+		if i == idx:
+			btn.add_theme_stylebox_override("normal",  active_style)
+			btn.add_theme_stylebox_override("hover",   active_style)
+			btn.add_theme_stylebox_override("pressed", active_style)
+		else:
+			btn.remove_theme_stylebox_override("normal")
+			btn.remove_theme_stylebox_override("hover")
+			btn.remove_theme_stylebox_override("pressed")
+
+func _set_variant_bar_interactive(enabled: bool) -> void:
+	"""Enable or disable variant preview buttons (disabled during execution)."""
+	for btn in _variant_buttons:
+		btn.disabled = not enabled
+
+func _on_variant_preview_pressed(idx: int) -> void:
+	"""Preview variant `idx` grid without running code."""
+	if idx < 0 or idx >= current_level_variants.size() or not grid_manager:
+		return
+	# Load the selected variant for display only; the actual run always resets
+	# to variant 1 when the Run button is pressed.
+	grid_manager.load_level_from_string(current_level_variants[idx])
+	_reset_player_and_refresh_grid(false)
+	_highlight_variant_button(idx)
+	var level_def = level_definitions.get_level(current_level_id)
+	title_label.text = "Level %d: %s (Variant %d/%d — preview)" % [
+		current_level_id,
+		level_def.get("level_name", "Level"),
+		idx + 1,
+		current_level_variants.size()
+	]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Variant intro popup
+# ─────────────────────────────────────────────────────────────────────────────
+
+func _setup_variant_intro_popup() -> void:
+	"""Create the one-time intro popup for multi-variant levels."""
+	_variant_intro_popup = AcceptDialog.new()
+	_variant_intro_popup.title = "Multi-Variant Levels"
+	_variant_intro_popup.dialog_text = \
+"""Starting from Level 6, every level has multiple variations of the same puzzle.
+
+Your code must solve ALL variations using a single program.
+LediBug will re-run your code from the beginning on each variation — it must reach the goal every time.
+
+To preview the variations before running:
+  • Use the numbered buttons at the bottom of the game panel.
+  • Click each number to see what that variation looks like.
+  • Click Run when you're ready to test your solution.
+
+Good luck!"""
+	_variant_intro_popup.size = Vector2(500, 300)
+	add_child(_variant_intro_popup)
+
+func _show_variant_intro_if_needed() -> void:
+	"""Show the variant intro popup the first time a variant level is loaded."""
+	if _shown_variant_intro or not _variant_intro_popup:
+		return
+	_shown_variant_intro = true
+	# Wait one frame so the level finishes loading before the popup appears.
+	await get_tree().process_frame
+	_variant_intro_popup.popup_centered()
 
 func _on_code_completion_requested():
 	"""Provide categorized code completion options.
@@ -418,6 +656,7 @@ func _on_run_button_pressed():
 	# Set to normal run mode (no debug UI)
 	debug_mode = false
 	_hide_debug_ui()
+	_reset_variant_state_for_new_run()
 	
 	# Reset level state
 	is_level_complete = false
@@ -446,6 +685,7 @@ func _on_debug_button_pressed():
 	# Set to debug mode (show debug UI)
 	debug_mode = true
 	_show_debug_ui()
+	_reset_variant_state_for_new_run()
 	
 	# Reset level state
 	is_level_complete = false
@@ -472,17 +712,31 @@ func _on_debug_button_pressed():
 
 func _on_stop_button_pressed():
 	"""Stop the currently executing code"""
+	_rerun_after_variant = false
 	code_executor.stop_execution()
 	output_label.text = "Stopped."
 	output_label.add_theme_color_override("font_color", Color(0.647, 0.671, 0.780, 1))
 	run_button.disabled = false
 	debug_button.disabled = false
 	stop_button.disabled = true
+	_set_variant_bar_interactive(true)
 	player.reset_position()
 
 func _on_execution_complete():
-	if is_level_complete:
-		output_label.text = "Level complete!"
+	# If a variant was just cleared, re-run the same code on the next variant
+	# grid (which GridManager already loaded before emitting variant_advanced).
+	if _rerun_after_variant:
+		_rerun_after_variant = false
+		_reset_player_and_refresh_grid(false)
+		var code = code_input.text
+		output_label.add_theme_color_override("font_color", Color(0.647, 0.671, 0.780, 1))
+		code_executor.execute_code(code, player)
+		if code_executor.interpreter:
+			code_executor.interpreter.set_execution_speed(_exec_speed)
+		return
+
+	if not player_is_dead and player and player.is_on_goal():
+		output_label.text = "Level complete! All variants solved!"
 		output_label.add_theme_color_override("font_color", Color(0.40, 0.90, 0.55, 1))
 		next_level_button.disabled = false
 		_win_popup.show_result()
@@ -495,7 +749,8 @@ func _on_execution_complete():
 	run_button.disabled = false
 	debug_button.disabled = false
 	stop_button.disabled = true
-	
+	_set_variant_bar_interactive(true)
+
 	# Clear line highlighting after execution
 	if current_line_highlight >= 0:
 		code_input.set_line_background_color(current_line_highlight, Color.TRANSPARENT)
@@ -532,13 +787,15 @@ func _on_menu_button_pressed():
 
 func _on_execution_error(error_msg: String):
 	"""Handle execution errors with proper formatting"""
+	_rerun_after_variant = false
 	output_label.text = "Error: " + error_msg
 	output_label.add_theme_color_override("font_color", Color(0.95, 0.38, 0.38, 1))
-	
+
 	run_button.disabled = false
 	debug_button.disabled = false
 	stop_button.disabled = true
-	
+	_set_variant_bar_interactive(true)
+
 	Dbg.p("ERROR: %s" % error_msg)
 
 func _on_level_completed():
@@ -1314,11 +1571,11 @@ func _on_speed_changed(value: float):
 	var interpreter = code_executor.interpreter
 	if interpreter:
 		interpreter.set_execution_speed(value)
-	speed_label.text = "Speed: %.2fx" % value
+	speed_label.text = "Speed: %.2fx" % [value]
 	# Keep toolbar slider in sync
 	if _speed_label_toolbar:
-		_speed_label_toolbar.text = "%.2g×" % value
-	Dbg.p("DEBUG: Speed changed to %.2fx" % value)
+		_speed_label_toolbar.text = str(snapped(value, 0.01)) + "\u00d7"
+	Dbg.p("DEBUG: Speed changed to %.2fx" % [value])
 
 func _set_speed_preset(speed: float):
 	"""Set speed to a preset value"""
@@ -1574,7 +1831,7 @@ func _setup_editor_toolbar():
 
 	# ── Speed value label ────────────────────────────────────────
 	_speed_label_toolbar = Label.new()
-	_speed_label_toolbar.text = "%.2g×" % _exec_speed
+	_speed_label_toolbar.text = str(snapped(_exec_speed, 0.01)) + "\u00d7"
 	_speed_label_toolbar.custom_minimum_size = Vector2(34, 0)
 	_speed_label_toolbar.add_theme_font_size_override("font_size", 11)
 	_speed_label_toolbar.add_theme_color_override("font_color", Color(0.70, 0.75, 0.90, 1))
@@ -1639,12 +1896,12 @@ func _on_toolbar_speed_changed(value: float):
 	"""Toolbar speed slider changed — applies immediately to any running execution."""
 	_exec_speed = value
 	if _speed_label_toolbar:
-		_speed_label_toolbar.text = "%.2g×" % value
+		_speed_label_toolbar.text = str(snapped(value, 0.01)) + "\u00d7"
 	# Sync debug speed slider + its label
 	if speed_slider:
 		speed_slider.value = value
 	if speed_label:
-		speed_label.text = "Speed: %.2fx" % value
+		speed_label.text = "Speed: %.2fx" % [value]
 	# Apply to interpreter if currently running
 	if code_executor and code_executor.interpreter:
 		code_executor.interpreter.set_execution_speed(value)
