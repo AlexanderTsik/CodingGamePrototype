@@ -47,15 +47,15 @@ func tokenize(code: String) -> Array:
 		if position >= source.length():
 			break
 		
-		var char = _current_char()
+		var ch = _current_char()
 		
 		# Handle comments
-		if char == '#':
+		if ch == '#':
 			_skip_line()
 			continue
 		
 		# Handle newlines
-		if char == '\n':
+		if ch == '\n':
 			tokens.append(Token.new(TokenType.NEWLINE, "\n", line, column))
 			position += 1
 			line += 1
@@ -63,56 +63,56 @@ func tokenize(code: String) -> Array:
 			continue
 		
 		# Handle numbers
-		if char.is_valid_int() or (char == '.' and _peek().is_valid_int()):
+		if ch.is_valid_int() or (ch == '.' and _peek().is_valid_int()):
 			tokens.append(_read_number())
 			continue
 		
 		# Handle identifiers and keywords
-		if char.is_valid_identifier():
+		if ch.is_valid_identifier():
 			tokens.append(_read_identifier())
 			continue
 		
 		# Handle strings
-		if char == '"' or char == "'":
-			tokens.append(_read_string(char))
+		if ch == '"' or ch == "'":
+			tokens.append(_read_string(ch))
 			continue
 		
 		# Handle operators and delimiters
-		match char:
+		match ch:
 			'#':
 				# Handle inline comments
 				_skip_line()
 			'(':
-				_add_token(TokenType.LEFT_PAREN, char)
+				_add_token(TokenType.LEFT_PAREN, ch)
 			')':
-				_add_token(TokenType.RIGHT_PAREN, char)
+				_add_token(TokenType.RIGHT_PAREN, ch)
 			'{':
-				_add_token(TokenType.LEFT_BRACE, char)
+				_add_token(TokenType.LEFT_BRACE, ch)
 			'}':
-				_add_token(TokenType.RIGHT_BRACE, char)
+				_add_token(TokenType.RIGHT_BRACE, ch)
 			',':
-				_add_token(TokenType.COMMA, char)
+				_add_token(TokenType.COMMA, ch)
 			'+':
-				_add_token(TokenType.PLUS, char)
+				_add_token(TokenType.PLUS, ch)
 			'-':
-				_add_token(TokenType.MINUS, char)
+				_add_token(TokenType.MINUS, ch)
 			'*':
-				_add_token(TokenType.MULTIPLY, char)
+				_add_token(TokenType.MULTIPLY, ch)
 			'/':
 				# Check for // comment
 				if _peek() == '/':
 					_skip_line()
 				else:
-					_add_token(TokenType.DIVIDE, char)
+					_add_token(TokenType.DIVIDE, ch)
 			'%':
-				_add_token(TokenType.MODULO, char)
+				_add_token(TokenType.MODULO, ch)
 			'=':
 				if _peek() == '=':
 					position += 1
 					column += 1
 					_add_token(TokenType.EQUALS, "==")
 				else:
-					_add_token(TokenType.ASSIGN, char)
+					_add_token(TokenType.ASSIGN, ch)
 			'!':
 				if _peek() == '=':
 					position += 1
@@ -127,16 +127,16 @@ func tokenize(code: String) -> Array:
 					column += 1
 					_add_token(TokenType.LESS_EQUAL, "<=")
 				else:
-					_add_token(TokenType.LESS_THAN, char)
+					_add_token(TokenType.LESS_THAN, ch)
 			'>':
 				if _peek() == '=':
 					position += 1
 					column += 1
 					_add_token(TokenType.GREATER_EQUAL, ">=")
 				else:
-					_add_token(TokenType.GREATER_THAN, char)
+					_add_token(TokenType.GREATER_THAN, ch)
 			_:
-				_error("unexpected character '%s'" % char)
+				_error("unexpected character '%s'" % ch)
 				position += 1
 				column += 1
 	
@@ -182,11 +182,11 @@ func _read_number() -> Token:
 	var has_dot = false
 	
 	while position < source.length():
-		var char = source[position]
-		if char.is_valid_int():
+		var ch = source[position]
+		if ch.is_valid_int():
 			position += 1
 			column += 1
-		elif char == '.' and not has_dot and position + 1 < source.length() and source[position + 1].is_valid_int():
+		elif ch == '.' and not has_dot and position + 1 < source.length() and source[position + 1].is_valid_int():
 			has_dot = true
 			position += 1
 			column += 1
@@ -194,7 +194,11 @@ func _read_number() -> Token:
 			break
 	
 	var num_str = source.substr(start_pos, position - start_pos)
-	var value = float(num_str) if has_dot else int(num_str)
+	var value
+	if has_dot:
+		value = float(num_str)
+	else:
+		value = int(num_str)
 	return Token.new(TokenType.NUMBER, value, line, start_col)
 
 func _read_identifier() -> Token:
@@ -202,8 +206,8 @@ func _read_identifier() -> Token:
 	var start_col = column
 	
 	while position < source.length():
-		var char = source[position]
-		if char.is_valid_identifier() or char.is_valid_int():
+		var ch = source[position]
+		if ch.is_valid_identifier() or ch.is_valid_int():
 			position += 1
 			column += 1
 		else:
@@ -223,14 +227,13 @@ func _read_string(quote_char: String) -> Token:
 	position += 1  # Skip opening quote
 	column += 1
 	
-	var start_pos = position
 	var result = ""
 	
 	while position < source.length() and source[position] != quote_char:
-		var char = source[position]
+		var ch = source[position]
 		
 		# Handle escape sequences
-		if char == '\\' and position + 1 < source.length():
+		if ch == '\\' and position + 1 < source.length():
 			position += 1
 			column += 1
 			var next_char = source[position]
@@ -250,7 +253,7 @@ func _read_string(quote_char: String) -> Token:
 			position += 1
 			column += 1
 		else:
-			result += char
+			result += ch
 			position += 1
 			column += 1
 	

@@ -1,10 +1,10 @@
 [gd_scene load_steps=16 format=3 uid="uid://155xx7s6y6ta"]
 
-[ext_resource type="Script" uid="uid://bp8fx4goaewu1" path="res://scripts/ui/main.gd" id="1_0wfyh"]
+[ext_resource type="Script" uid="uid://tlnj0sij25sc" path="res://scripts/ui/main.gd" id="1_0wfyh"]
 [ext_resource type="PackedScene" uid="uid://be8qbmt0fe144" path="res://scenes/game/player.tscn" id="2_sugp2"]
 [ext_resource type="Texture2D" uid="uid://can2if4ugmpt3" path="res://assets/sprites/LediBugSprite.png" id="3_jyhfs"]
-[ext_resource type="Script" uid="uid://cuw7qvo7u78ur" path="res://scripts/language/code_executor.gd" id="3_sugp2"]
-[ext_resource type="Script" uid="uid://fnmpjs71p36i" path="res://scripts/levels/simple_grid.gd" id="6_grid"]
+[ext_resource type="Script" uid="uid://du2qpsph7hee2" path="res://scripts/language/code_executor.gd" id="3_sugp2"]
+[ext_resource type="Script" uid="uid://brbtrsjudxy8n" path="res://scripts/levels/simple_grid.gd" id="6_grid"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_run_normal"]
 bg_color = Color(0.082, 0.467, 0.224, 1)
@@ -102,12 +102,12 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-split_offset = 390
+split_offset = 0
 
 [node name="CodePanel" type="PanelContainer" parent="HSplitContainer"]
-custom_minimum_size = Vector2(340, 0)
+custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel_dark")
 
 [node name="VSplitContainer" type="VSplitContainer" parent="HSplitContainer/CodePanel"]
@@ -153,7 +153,9 @@ custom_minimum_size = Vector2(6, 0)
 layout_mode = 2
 
 [node name="RunButton" type="Button" parent="HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer"]
+custom_minimum_size = Vector2(84, 36)
 layout_mode = 2
+theme_override_font_sizes/font_size = 18
 theme_override_styles/normal = SubResource("StyleBoxFlat_run_normal")
 theme_override_styles/hover = SubResource("StyleBoxFlat_run_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_run_hover")
@@ -202,18 +204,24 @@ indent_automatic = true
 auto_brace_completion_highlight_matching = true
 
 [node name="OutputPanel" type="PanelContainer" parent="HSplitContainer/CodePanel/VSplitContainer/TopSection"]
-custom_minimum_size = Vector2(100, 72)
+custom_minimum_size = Vector2(100, 132)
 layout_mode = 2
+size_flags_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_output_bg")
 
-[node name="OutputMargin" type="MarginContainer" parent="HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputPanel"]
+[node name="OutputScroll" type="ScrollContainer" parent="HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputPanel"]
 layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="OutputMargin" type="MarginContainer" parent="HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputPanel/OutputScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/margin_left = 10
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_bottom = 6
 
-[node name="OutputLabel" type="Label" parent="HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputPanel/OutputMargin"]
+[node name="OutputLabel" type="Label" parent="HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputPanel/OutputScroll/OutputMargin"]
 layout_mode = 2
 text = "Ready"
 horizontal_alignment = 0

@@ -7,6 +7,7 @@ signal variant_advanced(current_variant: int, total_variants: int)
 signal cell_activated(cell_pos: Vector2i, cell_type: CellType.Type)
 signal item_collected(item_type: CellType.Type, position: Vector2i)
 signal teleported(from_pos: Vector2i, to_pos: Vector2i)
+signal grid_changed
 
 @export var tile_size: int = 48
 
@@ -100,7 +101,7 @@ func _pair_teleporters(positions: Array[Vector2i]):
 	"""Pair teleporters in order of appearance"""
 	for i in range(0, positions.size(), 2):
 		if i + 1 < positions.size():
-			var id = i / 2
+			var id = i >> 1
 			teleporter_pairs[id] = [positions[i], positions[i + 1]]
 			
 			# Store properties for each teleporter
@@ -143,14 +144,35 @@ func is_hazard(grid_pos: Vector2i) -> bool:
 	var cell = get_cell_at(grid_pos)
 	return cell == CellType.Type.HAZARD or cell == CellType.Type.LAVA
 
+func is_door(grid_pos: Vector2i) -> bool:
+	"""Check if this cell is a (closed) door"""
+	return get_cell_at(grid_pos) == CellType.Type.DOOR
+
+func is_key(grid_pos: Vector2i) -> bool:
+	"""Check if this cell holds a key pickup"""
+	return get_cell_at(grid_pos) == CellType.Type.KEY
+
+func set_cell(grid_pos: Vector2i, cell_type: CellType.Type) -> void:
+	"""Change a cell's type at runtime (e.g. picking up a key or opening a door)
+	and notify listeners so the grid can redraw."""
+	if not is_valid_position(grid_pos):
+		return
+	grid[grid_pos.y][grid_pos.x] = cell_type
+	grid_changed.emit()
+
 func is_goal(grid_pos: Vector2i) -> bool:
 	"""Check if this cell is a goal"""
 	return get_cell_at(grid_pos) == CellType.Type.GOAL
 
 static func is_layout_solvable(layout: String) -> bool:
-	"""BFS from the Start cell to any Goal. Walls and doors block movement
-	(matching is_walkable); hazards/teleporters are treated as passable, so this
-	is a conservative reachability check that catches walled-off goals.
+	"""BFS from the Start cell to any Goal. Walls block movement; hazards and
+	teleporters are treated as passable (a conservative reachability check).
+
+	Keys and doors are modelled faithfully: walking onto a KEY collects it, and a
+	DOOR can only be crossed by spending a previously-collected key (which opens
+	it permanently for that path). The search state therefore tracks which keys
+	have been collected and which doors have been opened, so a goal locked behind
+	a door is only reachable once the matching key is obtainable first.
 	Returns false if there's no start, no goal, or no clear path."""
 	var rows: Array[String] = []
 	for line in layout.split("\n"):
@@ -161,35 +183,65 @@ static func is_layout_solvable(layout: String) -> bool:
 
 	var start := Vector2i(-1, -1)
 	var goals := {}
+	var key_index := {}      # Vector2i -> bit index
+	var door_index := {}     # Vector2i -> bit index
 	for y in range(rows.size()):
 		var line: String = rows[y]
 		for x in range(line.length()):
+			var p := Vector2i(x, y)
 			match CellType.from_char(line[x]):
-				CellType.Type.START: start = Vector2i(x, y)
-				CellType.Type.GOAL:  goals[Vector2i(x, y)] = true
+				CellType.Type.START: start = p
+				CellType.Type.GOAL:  goals[p] = true
+				CellType.Type.KEY:   key_index[p] = key_index.size()
+				CellType.Type.DOOR:  door_index[p] = door_index.size()
 	if start == Vector2i(-1, -1) or goals.is_empty():
 		return false
 
-	var visited := {start: true}
-	var queue: Array[Vector2i] = [start]
+	# BFS over state = (pos, collected-keys bitmask, opened-doors bitmask).
+	var visited := {"%d,%d,0,0" % [start.x, start.y]: true}
+	var queue: Array = [[start, 0, 0]]
 	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 	while not queue.is_empty():
-		var cur: Vector2i = queue.pop_front()
+		var st = queue.pop_front()
+		var cur: Vector2i = st[0]
+		var keys_mask: int = st[1]
+		var doors_mask: int = st[2]
 		if goals.has(cur):
 			return true
 		for d in dirs:
 			var nx: Vector2i = cur + d
-			if visited.has(nx) or nx.y < 0 or nx.y >= rows.size():
+			if nx.y < 0 or nx.y >= rows.size():
 				continue
 			var rline: String = rows[nx.y]
 			if nx.x < 0 or nx.x >= rline.length():
 				continue
 			var ct = CellType.from_char(rline[nx.x])
-			if ct == CellType.Type.WALL or ct == CellType.Type.DOOR:
+			if ct == CellType.Type.WALL:
 				continue
-			visited[nx] = true
-			queue.append(nx)
+			var nkeys := keys_mask
+			var ndoors := doors_mask
+			if ct == CellType.Type.DOOR:
+				var di: int = door_index[nx]
+				if not (ndoors & (1 << di)):
+					# Closed door — need a spare key (collected minus already spent).
+					if _popcount(nkeys) - _popcount(ndoors) <= 0:
+						continue
+					ndoors |= (1 << di)
+			elif ct == CellType.Type.KEY:
+				nkeys |= (1 << int(key_index[nx]))
+			var skey := "%d,%d,%d,%d" % [nx.x, nx.y, nkeys, ndoors]
+			if visited.has(skey):
+				continue
+			visited[skey] = true
+			queue.append([nx, nkeys, ndoors])
 	return false
+
+static func _popcount(n: int) -> int:
+	var c := 0
+	while n > 0:
+		c += n & 1
+		n >>= 1
+	return c
 
 # Cell property methods
 func set_cell_property(pos: Vector2i, key: String, value):
@@ -217,9 +269,15 @@ func is_teleporter(grid_pos: Vector2i) -> bool:
 	"""Check if this cell is a teleporter"""
 	return get_cell_at(grid_pos) == CellType.Type.TELEPORTER
 
+func emit_teleported(from_pos: Vector2i, to_pos: Vector2i) -> void:
+	"""Forward teleporter event emission through GridManager.
+	Keeping emission in-class avoids UNUSED_SIGNAL warnings and centralizes the event."""
+	teleported.emit(from_pos, to_pos)
+
 func get_start_world_position() -> Vector2:
 	"""Get world position (pixels) of start cell"""
-	return Vector2(start_position) * tile_size + Vector2(tile_size / 2, tile_size / 2)
+	var half := float(tile_size) * 0.5
+	return Vector2(start_position) * float(tile_size) + Vector2(half, half)
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	"""Convert world position to grid coordinates"""
@@ -227,7 +285,8 @@ func world_to_grid(world_pos: Vector2) -> Vector2i:
 
 func grid_to_world(grid_pos: Vector2i) -> Vector2:
 	"""Convert grid coordinates to world position (center of cell)"""
-	return Vector2(grid_pos) * tile_size + Vector2(tile_size / 2, tile_size / 2)
+	var half := float(tile_size) * 0.5
+	return Vector2(grid_pos) * float(tile_size) + Vector2(half, half)
 
 func check_player_position(grid_pos: Vector2i):
 	"""Check if player position triggers any events"""

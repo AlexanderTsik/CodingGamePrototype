@@ -24,8 +24,8 @@ func run() -> void:
 	await tree.process_frame
 	_defs = load("res://scripts/levels/level_definitions.gd").new()
 
-	section("all 10 builtin levels are structurally valid")
-	for n in range(1, 11):
+	section("all builtin levels are structurally valid")
+	for n in range(1, _defs.get_level_count() + 1):
 		var lv = _defs.get_level(n)
 		assert_false(lv.is_empty(), "level %d exists" % n)
 		var gm = GridManager.new()
@@ -39,7 +39,7 @@ func run() -> void:
 		gm.free()
 
 	section("levels 6+ expose multiple variants")
-	for n in range(1, 11):
+	for n in range(1, _defs.get_level_count() + 1):
 		var variant_count = _defs.get_level_variant_count(n)
 		if n <= 5:
 			assert_eq(variant_count, 1, "level %d stays single-variant" % n)
@@ -54,17 +54,17 @@ func run() -> void:
 		"for (i in range(7)) { move() }\nturnRight()\nfor (i in range(4)) { move() }")
 	assert_true(r1["on_goal"], "level 1 reaches goal (ended at %s)" % str(r1["pos"]))
 
-	# The right-hand-rule is the intended solution for the maze levels.
+	# The right-hand-rule is the intended solution for the open maze levels.
 	var rhr := "while (not goalReached()) { if (rightIsClear()) { turnRight() move() } elif (frontIsClear()) { move() } else { turnLeft() } }"
-
-	section("Level 9 solves with the right-hand rule")
-	for v in _defs.get_level_variants(9):
-		var r9 = await _solve(v, rhr)
-		assert_true(r9["on_goal"], "level 9 variant reaches goal (ended at %s)" % str(r9["pos"]))
 
 	section("Level 10 solves with the right-hand rule")
 	for v in _defs.get_level_variants(10):
 		var r10 = await _solve(v, rhr)
 		assert_true(r10["on_goal"], "level 10 variant reaches goal (ended at %s)" % str(r10["pos"]))
+
+	section("Level 11 solves with the right-hand rule")
+	for v in _defs.get_level_variants(11):
+		var r11 = await _solve(v, rhr)
+		assert_true(r11["on_goal"], "level 11 variant reaches goal (ended at %s)" % str(r11["pos"]))
 
 	_defs.free()

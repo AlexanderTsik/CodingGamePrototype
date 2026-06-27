@@ -9,6 +9,11 @@ const SPRITE_NATURAL := 320.0  # LediBugSprite.png at scale 1.0 = 320 px
 
 signal cell_size_changed(new_size: int)
 
+# Pixel offset that centres the grid inside the panel. The player layer (the
+# child "Level" Node2D) is moved by this same amount so sprites stay aligned
+# with the drawn cells; spotlight math in main.gd also reads this.
+var grid_offset: Vector2 = Vector2.ZERO
+
 func _ready():
 	queue_redraw()
 
@@ -37,12 +42,26 @@ func _draw():
 		grid_manager.tile_size = cs
 		cell_size_changed.emit(cs)
 
+	# Full-panel background (drawn before the centring transform so it fills
+	# the whole panel, even the margins around the centred grid).
 	draw_rect(Rect2(Vector2.ZERO, size), background_color, true)
+
+	# Centre the grid inside the panel and shift the player layer to match.
+	grid_offset = Vector2(
+		floor(maxf((size.x - cols * cs) * 0.5, 0.0)),
+		floor(maxf((size.y - rows * cs) * 0.5, 0.0)))
+	var level := get_node_or_null("Level")
+	if level is Node2D:
+		(level as Node2D).position = grid_offset
+
+	draw_set_transform(grid_offset, 0.0, Vector2.ONE)
 
 	if grid_manager and grid_manager.grid.size() > 0:
 		_draw_cells(cols, rows, cs)
 
 	_draw_grid_lines(cols, rows, cs)
+
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_cells(cols: int, rows: int, cs: int):
 	for y in range(rows):
@@ -110,6 +129,13 @@ func _decorate(ct: CellType.Type, ox: float, oy: float, sw: float, sh: float, cs
 		CellType.Type.KEY:
 			draw_arc(Vector2(cx - r * 0.15, cy - r * 0.25), r * 0.38, 0.0, TAU, 16, Color(1, 1, 1, 0.72), lw)
 			draw_line(Vector2(cx, cy - r * 0.05), Vector2(cx + r * 0.82, cy - r * 0.05), Color(1, 1, 1, 0.72), lw)
+
+		CellType.Type.DOOR:
+			# Door panel outline with a round keyhole.
+			var dm := sw * 0.22
+			draw_rect(Rect2(ox + dm, oy + dm, sw - dm * 2.0, sh - dm * 1.4), Color(1, 1, 1, 0.30), false, lw)
+			draw_circle(Vector2(cx, cy - r * 0.1), r * 0.22, Color(1, 1, 1, 0.78))
+			draw_line(Vector2(cx, cy - r * 0.1), Vector2(cx, cy + r * 0.45), Color(1, 1, 1, 0.78), lw)
 
 		CellType.Type.ICE:
 			for a in [0.0, PI / 3.0, PI * 2.0 / 3.0]:

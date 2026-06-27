@@ -269,8 +269,12 @@ func _on_grid_input(event: InputEvent):
 
 func _get_grid_position(mouse_pos: Vector2) -> Vector2i:
 	var cell_size = grid_manager.tile_size if grid_manager and grid_manager.tile_size > 0 else 48
-	var grid_x = int(mouse_pos.x / cell_size)
-	var grid_y = int(mouse_pos.y / cell_size)
+	# The grid is centred inside the renderer, so subtract its offset first.
+	var off = grid_renderer.get("grid_offset") if grid_renderer else null
+	var ox: float = off.x if off is Vector2 else 0.0
+	var oy: float = off.y if off is Vector2 else 0.0
+	var grid_x = int((mouse_pos.x - ox) / cell_size)
+	var grid_y = int((mouse_pos.y - oy) / cell_size)
 	if grid_x >= 0 and grid_x < grid_width and grid_y >= 0 and grid_y < grid_height:
 		return Vector2i(grid_x, grid_y)
 	return Vector2i(-1, -1)

@@ -18,7 +18,7 @@ var all_levels = [
 	{
 		"level_id": 1,
 		"level_name": "First Steps",
-		"level_description": "Move and turn in the right order to reach the goal",
+		"level_description": "Learn sequencing: commands run top-to-bottom, so the order of move and turn matters.",
 		"difficulty": 1,
 		"layout": """###########
 #....G#####
@@ -70,7 +70,7 @@ a wall — order matters!"""
 	{
 		"level_id": 2,
 		"level_name": "Long March",
-		"level_description": "The path is long and repetitive — loops are your friend",
+		"level_description": "Learn for loops: repeat a command N times instead of typing it out by hand.",
 		"difficulty": 1,
 		"layout": """##########
 ########G#
@@ -134,8 +134,8 @@ Syntax reminder:
 	{
 		"level_id": 3,
 		"level_name": "Blind Alleys",
-		"level_description": "The corridors are different lengths — let your sensors guide you",
-		"difficulty": 2,
+		"level_description": "Learn while loops + sensors: walk until a wall stops you, with no counting.",
+		"difficulty": 1,
 		"layout": """##########
 ##########
 #####...G#
@@ -208,7 +208,7 @@ rightIsClear() — true if the cell to your right is open"""
 	{
 		"level_id": 4,
 		"level_name": "Fork in the Road",
-		"level_description": "Two junctions, one decision — let sensors choose the turn",
+		"level_description": "Learn if / else: choose which way to turn based on what a sensor sees.",
 		"difficulty": 2,
 		"layout": """##########
 ######G###
@@ -283,7 +283,7 @@ Sensors return true or false:
 	{
 		"level_id": 5,
 		"level_name": "Staircase",
-		"level_description": "Three identical patterns — write it once, call it three times",
+		"level_description": "Learn functions: name a block of code once, then reuse it (Don't Repeat Yourself).",
 		"difficulty": 2,
 		"layout": """##########
 ####G#####
@@ -356,135 +356,167 @@ With a function: 9 lines."""
 	},
 	
 	# ──────────────────────────────────────────────────────────────────────
-	# Level 6 — Nested For Loops ("Comb Run")
-	# Concept : A loop inside a loop.
-	# Grid    : 4 vertical corridors (5 cells each) joined by a horizontal
-	#           connector at y=6. Walk up & back 3 corridors, then walk
-	#           the 4th straight to the goal.
-	# Solution: move()×2 → turnRight()
-	#           for i in range(3):
-	#             turnLeft() → for j in range(5): move()
-	#             turnBack() → for j in range(5): move()
-	#             turnRight() → move()×2
-	#           turnLeft() → for j in range(5): move()
+	# Level 6 — Corridor Follower ("Snake Path")
+	# Concept : Combine while + if/else + the goalReached() sensor to follow
+	#           a single winding corridor: walk straight until a wall stops
+	#           you, then turn toward whichever side is open. Repeat until
+	#           you reach the goal. A gentle first taste of "code that reads
+	#           the maze" before the full right-hand rule at Level 10.
+	# Grid    : Single-path snakes (no branches), different shapes per variant.
+	# Solution: while (not goalReached()) {
+	#             while (frontIsClear()) { move() }
+	#             if (rightIsClear()) { turnRight() } else { turnLeft() }
+	#           }
 	# ──────────────────────────────────────────────────────────────────────
 	{
 		"level_id": 6,
-		"level_name": "Comb Run",
-		"level_description": "Four corridors, one loop inside another — explore them all",
-		"difficulty": 3,
+		"level_name": "Snake Path",
+		"level_description": "Combine while, if/else and goalReached(): follow a winding corridor until you reach the goal.",
+		"difficulty": 2,
 		"layout": """##########
-#.#.#.#G##
-#.#.#.#.##
-#.#.#.#.##
-#.#.#.#.##
-#.#.#.#.##
-#.......##
+#....G####
+####.#####
+####.#####
+#....#####
+#.########
+#.########
 #.########
 #S########
 ##########""",
 		"variants": [
 			"""##########
-#.#.#.#G##
-#.#.#.#.##
-#.#.#.#.##
-#.#.#.#.##
-#.#.#.#.##
-#.......##
+#....G####
+####.#####
+####.#####
+#....#####
+#.########
+#.########
 #.########
 #S########
 ##########""",
-			"""############
-#.#.#.#.#G##
-#.#.#.#.#.##
-#.#.#.#.#.##
-#.#.#.#.#.##
-#.#.#.#.#.##
-#.#.#.#.#.##
-#.........##
-#S##########
-############"""
+			"""##########
+######G###
+######.###
+######.###
+#......###
+#.########
+#.########
+#.########
+#S########
+##########""",
+			"""##########
+####G#####
+####.#####
+####.#####
+####.#####
+#....#####
+#.########
+#.########
+#S########
+##########"""
 		],
-		"starter_code": """# Walk up each corridor and back, then step to the next one.
-# A loop inside a loop handles all the return trips!
+		"starter_code": """# This is a single winding corridor — a "snake".
+# You don't know how long each straight part is,
+# so COUNT nothing: just let the bug READ the maze.
 #
-#   for (i in range(3)) {
-#       turnLeft()
-#       for (j in range(5)) { move() }   <- inner loop
-#       turnBack()
-#       for (j in range(5)) { move() }
-#       turnLeft()
-#       move()
-#       move()
+# The plan, repeated until you reach the goal:
+#   1. Walk straight until a wall blocks you.
+#   2. Turn toward whichever side is open.
+#
+#   while (not goalReached()) {
+#       while (frontIsClear()) {
+#           move()
+#       }
+#       if (rightIsClear()) {
+#           turnRight()
+#       } else {
+#           turnLeft()
+#       }
 #   }
-
-# First: walk to the horizontal connector
-move()
-move()
-turnRight()
-
-# Your nested loop goes here...
-""",
-		"solution_code": """while (not goalReached()) {
+#
+# goalReached() — true once the bug stands on the goal (G).
+while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
     if (rightIsClear()) {
         turnRight()
-        move()
-    } elif (frontIsClear()) {
-        move()
     } else {
         turnLeft()
     }
 }
 """,
-		"hint_text": """Level 6 — Nested For Loops
+		"solution_code": """while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"hint_text": """Level 6 — Snake Path
 
-A loop can contain another loop:
+This corridor twists and turns, and each
+straight part is a different length. Counting
+steps would be a nightmare — so don't!
 
-  for (i in range(3)) {
-      for (j in range(5)) {
+Instead, write code that FOLLOWS the corridor:
+
+  while (not goalReached()) {
+      while (frontIsClear()) {   <- walk straight
           move()
+      }
+      if (rightIsClear()) {      <- corner: turn
+          turnRight()            <- toward the open side
+      } else {
+          turnLeft()
       }
   }
 
-Outer loop: 3 times.
-Inner loop: 5 times each.
-Total moves: 3 x 5 = 15.
+How it works:
+  • The inner while walks forward until a wall.
+  • At a corner exactly one side is open, so the
+    if/else picks the correct turn.
+  • The outer while keeps going until goalReached().
 
-The grid has 4 vertical corridors (5 cells
-each) joined at the bottom by a corridor.
+New sensor:
+  goalReached() — true when the bug is on the goal.
 
-Walk up → back down → step east → repeat.
-Use nested loops for corridors 1-3, then
-walk the 4th straight to the goal.
-
-Tip: turnBack() turns you 180 degrees."""
+Because the code reads the maze as it goes, the
+SAME program solves every snake, no matter its
+shape. This is your first "smart" solver —
+Level 10 will make it even more powerful!"""
 	},
 
 	# ──────────────────────────────────────────────────────────────────────
-	# Level 7 — Variables ("Spiral Out")
-	# Concept : Store a value in a variable, use it in range(), increment it.
-	# Grid    : 4-arm clockwise spiral — arms of length 1, 2, 3, 4.
-	#           S at (5,6) facing north. Arms: N1, E2, S3, W4 → G(3,8).
-	# Solution: var n = 1
-	#           for i in range(4):
-	#             for j in range(n): move()
-	#             turnRight()
-	#             n = n + 1
+	# Level 7 — Variables ("Measure & Mirror")
+	# Concept : Store a measured value in a variable, then reuse it.
+	# Grid    : Symmetric L — walk UP an unknown distance, then turn and
+	#           walk the SAME distance EAST to the goal.
+	# Why force: The leg length changes every variant (3, 5, 7), so a
+	#            hard-coded count fails. You MUST measure and reuse.
+	# Solution: n = 0
+	#           while (frontIsClear()) { move(); n = n + 1 }
+	#           turnRight()
+	#           for (i in range(n)) { move() }
 	# ──────────────────────────────────────────────────────────────────────
 	{
 		"level_id": 7,
-		"level_name": "Spiral Out",
-		"level_description": "Each arm is longer than the last — track the count in a variable",
+		"level_name": "Measure & Mirror",
+		"level_description": "Learn variables: count the steps you take, store the number, then reuse it.",
 		"difficulty": 3,
 		"layout": """##########
 ##########
 ##########
 ##########
 ##########
-#####...##
-#####S#.##
-#######.##
-###G....##
+#...G#####
+#.########
+#.########
+#S########
 ##########""",
 		"variants": [
 			"""##########
@@ -492,130 +524,158 @@ Tip: turnBack() turns you 180 degrees."""
 ##########
 ##########
 ##########
-#####...##
-#####S#.##
-#######.##
-###G....##
+#...G#####
+#.########
+#.########
+#S########
 ##########""",
-			"""############
-############
-############
-############
-#######...##
-#######.#.##
-#######S#.##
-#########.##
-#####G....##
-############"""
+			"""##########
+##########
+##########
+#.....G###
+#.########
+#.########
+#.########
+#.########
+#S########
+##########""",
+			"""##########
+#.......G#
+#.########
+#.########
+#.########
+#.########
+#.########
+#.########
+#S########
+##########"""
 		],
-		"starter_code": """# The path spirals outward — each arm is 1 step longer than the last.
-# Without a variable you need four separate for loops.
-# With a variable, one outer loop handles all four arms!
-# (Variables are created by simple assignment — no keyword needed.)
+		"starter_code": """# The path goes UP an unknown distance, then the SAME
+# distance EAST. The length changes every run, so you
+# cannot just type a fixed number!
 #
-#   n = 1
-#   for (i in range(4)) {
-#       for (j in range(n)) { move() }
-#       turnRight()
-#       n = n + 1
+# Solution: COUNT your steps into a variable, then reuse it.
+# (Variables are created by assignment — no keyword needed.)
+#
+#   n = 0
+#   while (frontIsClear()) {
+#       move()
+#       n = n + 1        <- count each step
+#   }
+#   turnRight()
+#   for (i in range(n)) {
+#       move()           <- reuse the count
 #   }
 
-n = 1
-# Use n inside the inner loop, then increase it each iteration.
+n = 0
 """,
-		"solution_code": """while (not goalReached()) {
-    if (rightIsClear()) {
-        turnRight()
-        move()
-    } elif (frontIsClear()) {
-        move()
-    } else {
-        turnLeft()
-    }
+		"solution_code": """n = 0
+while (frontIsClear()) {
+    move()
+    n = n + 1
+}
+turnRight()
+for (i in range(n)) {
+    move()
 }
 """,
 		"hint_text": """Level 7 — Variables
 
-Variables store values that can change.
-Just assign a value to create one — no keyword needed:
+A variable stores a value you can read back
+later. Create one by assigning to it:
 
-  n = 1
-  for (i in range(4)) {
-      for (j in range(n)) { move() }
-      turnRight()
-      n = n + 1    <- grows each loop
+  n = 0
+  n = n + 1     <- add one to n
+
+The corridor goes UP an unknown number of
+cells, then EAST the SAME number. Because
+the distance changes every variation, you
+cannot hard-code it. Instead, MEASURE it:
+
+  n = 0
+  while (frontIsClear()) {
+      move()
+      n = n + 1     <- count steps going up
+  }
+  turnRight()
+  for (i in range(n)) {
+      move()        <- walk that many east
   }
 
-Without a variable you'd write:
-  for(j in range(1)) { move() } turnRight()
-  for(j in range(2)) { move() } turnRight()
-  ... (four separate blocks)
-
-The spiral arms:
-  1 step north  -> turn right
-  2 steps east  -> turn right
-  3 steps south -> turn right
-  4 steps west  -> goal!"""
+The variable 'remembers' how far you walked
+so you can mirror the distance. Try a fixed
+number instead and it will fail on another
+variation — that's why variables matter!"""
 	},
 
 	# ──────────────────────────────────────────────────────────────────────
-	# Level 8 — Functions with Parameters ("Three Bridges")
-	# Concept : Define walk(n) once, call it with different values.
-	# Grid    : S(1,8) → north 2 → east 4 → north 5 → G(5,1).
-	#           Three segments of lengths 2, 4, 5.
+	# Level 8 — Functions with Parameters ("Bridge Builder")
+	# Concept : Define walk(n) once, call it with a measured value twice.
+	# Grid    : Z-shape — three equal legs: UP n, EAST n, UP n to the goal.
+	# Why force: The leg length changes every variant (2, 3, 4). Measure it
+	#            into a variable, then pass it to a reusable function.
 	# Solution: function walk(n){ for i in range(n): move() }
-	#           walk(2) → turnRight() → walk(4) → turnLeft() → walk(5)
+	#           n = (count up); turnRight(); walk(n); turnLeft(); walk(n)
 	# ──────────────────────────────────────────────────────────────────────
 	{
 		"level_id": 8,
-		"level_name": "Three Bridges",
-		"level_description": "Three corridors, three lengths — write walk(n) once, call it three times",
+		"level_name": "Bridge Builder",
+		"level_description": "Learn function parameters: write walk(n) once, then call it with any distance.",
 		"difficulty": 3,
 		"layout": """##########
-#####G####
-#####.####
-#####.####
-#####.####
-#####.####
-#.....####
+##########
+##########
+###G######
+###.######
+#...######
+#.########
+#S########
+##########
+##########""",
+		"variants": [
+			"""##########
+##########
+##########
+###G######
+###.######
+#...######
+#.########
+#S########
+##########
+##########""",
+			"""##########
+##########
+####G#####
+####.#####
+####.#####
+#....#####
+#.########
 #.########
 #S########
 ##########""",
-		"variants": [
 			"""##########
 #####G####
 #####.####
 #####.####
 #####.####
-#####.####
 #.....####
 #.########
+#.########
+#.########
 #S########
-##########""",
-			"""############
-#######G####
-#######.####
-#######.####
-#######.####
-#######.####
-#.......####
-#.##########
-#S##########
-############"""
+##########"""
 		],
-		"starter_code": """# Three corridor segments: 2 steps north, 4 east, 5 north.
-# Without a function you'd copy the for-loop three times.
-# With a parameter, write it once and call it with different values!
+		"starter_code": """# The path is a Z: UP n cells, EAST n cells, then UP n again.
+# All three legs are the SAME length, but that length changes
+# every run. Measure it once, then reuse it.
+#
+# A function PARAMETER lets you pass the distance in:
 #
 #   function walk(n) {
 #       for (i in range(n)) { move() }
 #   }
 #
-#   walk(2)
-#   turnRight()
-#   walk(4)
-#   turnLeft()
-#   walk(5)
+# Then call walk(n) with your measured value.
 
 function walk(n) {
     for (i in range(n)) {
@@ -623,23 +683,28 @@ function walk(n) {
     }
 }
 
-walk(2)
-# Keep going with turnRight(), walk(4), turnLeft(), walk(5)
+n = 0
+# Count the first leg, then: turnRight(), walk(n), turnLeft(), walk(n)
 """,
-		"solution_code": """while (not goalReached()) {
-    if (rightIsClear()) {
-        turnRight()
+		"solution_code": """function walk(n) {
+    for (i in range(n)) {
         move()
-    } elif (frontIsClear()) {
-        move()
-    } else {
-        turnLeft()
     }
 }
+n = 0
+while (frontIsClear()) {
+    move()
+    n = n + 1
+}
+turnRight()
+walk(n)
+turnLeft()
+walk(n)
 """,
 		"hint_text": """Level 8 — Functions with Parameters
 
-A function can accept a value (parameter):
+A parameter is an input to a function.
+The function uses whatever value you give it:
 
   function walk(n) {
       for (i in range(n)) {
@@ -647,138 +712,169 @@ A function can accept a value (parameter):
       }
   }
 
-Call it with any number:
+Now one function handles ANY distance:
   walk(2)   -> moves 2 steps
-  walk(4)   -> moves 4 steps
   walk(5)   -> moves 5 steps
 
-The path:
-  north 2 -> turn right
-  east  4 -> turn left
-  north 5 -> goal!
+The path is a Z with three EQUAL legs
+(up, east, up). Measure the first leg into
+a variable, then reuse it for the others:
 
-Three calls, zero repeated code.
-That's the power of parameters."""
+  n = 0
+  while (frontIsClear()) {
+      move()
+      n = n + 1
+  }
+  turnRight()
+  walk(n)
+  turnLeft()
+  walk(n)
+
+One function, called twice with a measured
+value — no repeated loop code!"""
 	},
 
 	# ──────────────────────────────────────────────────────────────────────
-	# Level 9 — Boolean Logic ("Right-Hand Rule")
-	# Concept : not, and, or in conditions; while(not goalReached()).
-	# Grid    : Winding single-path maze. The right-hand follower algorithm
-	#           is the natural fit — any hard-coded sequence fails.
-	# Solution: while(not goalReached()):
-	#               if rightIsClear(): turnRight(); move()
-	#               elif frontIsClear(): move()
-	#               else: turnLeft()
+	# Level 9 — Nested Loops ("The Comb")
+	# Concept : A loop inside a loop. Inner while climbs a tooth; outer
+	#           for repeats across teeth.
+	# Grid    : Comb with 3 vertical teeth on a base corridor. Tooth heights
+	#           change per variant (so a fixed count fails), but the count
+	#           of teeth stays 3.
+	# Solution: for t in range(2): climb + descend + step to next tooth;
+	#           then climb the final tooth to the goal.
 	# ──────────────────────────────────────────────────────────────────────
 	{
 		"level_id": 9,
-		"level_name": "Right-Hand Rule",
-		"level_description": "Navigate the maze with boolean logic — not, and, or",
-		"difficulty": 4,
+		"level_name": "The Comb",
+		"level_description": "Learn nested loops: a loop inside a loop sweeps each tooth of the comb.",
+		"difficulty": 3,
 		"layout": """##########
 ##########
-########G#
-########.#
-########.#
-#######..#
-#....##.##
-#.##....##
-#S########
+##########
+##########
+#.#.#G####
+#.#.#.####
+#.#.#.####
+#S....####
+##########
 ##########""",
 		"variants": [
 			"""##########
 ##########
-########G#
-########.#
-########.#
-#######..#
-#....##.##
-#.##....##
-#S########
+##########
+##########
+#.#.#G####
+#.#.#.####
+#.#.#.####
+#S....####
+##########
 ##########""",
-			"""############
-############
-##########G#
-##########.#
-#######....#
-#######.####
-#.....#.####
-#.###...####
-#S##########
-############"""
+			"""##########
+##########
+##########
+###.######
+###.#G####
+#.#.#.####
+#.#.#.####
+#S....####
+##########
+##########""",
+			"""##########
+##########
+##########
+#####G####
+#.###.####
+#.#.#.####
+#.#.#.####
+#S....####
+##########
+##########"""
 		],
-		"starter_code": """# The maze twists unpredictably — hard-coding each turn won't work.
-# Use the right-hand follower: always try to turn right first.
+		"starter_code": """# The comb has 3 vertical "teeth" joined by a base corridor.
+# Climb each tooth, come back down, step to the next one,
+# then climb the LAST tooth straight to the goal.
 #
-# Key new syntax: not, and, or
+# This needs a loop INSIDE a loop:
+#   - inner while: walk to the end of a tooth (any height)
+#   - outer for:   repeat for each tooth
+#
+#   for (t in range(2)) {
+#       while (frontIsClear()) { move() }   <- climb
+#       turnBack()
+#       while (frontIsClear()) { move() }   <- descend
+#       turnLeft()
+#       move()
+#       move()
+#       turnLeft()
+#   }
+#   while (frontIsClear()) { move() }        <- last tooth -> goal
 
-while (not goalReached()) {
-    if (rightIsClear()) {
-        turnRight()
-        move()
-    } elif (frontIsClear()) {
-        move()
-    } else {
-        turnLeft()
-    }
+for (t in range(2)) {
 }
 """,
-		"solution_code": """while (not goalReached()) {
-    if (rightIsClear()) {
-        turnRight()
+		"solution_code": """for (t in range(2)) {
+    while (frontIsClear()) {
         move()
-    } elif (frontIsClear()) {
-        move()
-    } else {
-        turnLeft()
     }
+    turnBack()
+    while (frontIsClear()) {
+        move()
+    }
+    turnLeft()
+    move()
+    move()
+    turnLeft()
+}
+while (frontIsClear()) {
+    move()
 }
 """,
-		"hint_text": """Level 9 — Boolean Logic
+		"hint_text": """Level 9 — Nested Loops
 
-New operators: not, and, or
+A loop can live inside another loop. The
+INNER loop runs to completion on every
+pass of the OUTER loop.
 
-  while (not goalReached()) { ... }
-  <- loop until the goal is reached
+This comb has 3 teeth joined at the base.
+For each of the first two teeth: climb up,
+climb back down, then step across the base
+to the next tooth. Finally, climb the last
+tooth to the goal.
 
-  if (frontIsClear() and rightIsClear())
-  <- BOTH must be true
-
-  if (frontIsClear() or rightIsClear())
-  <- at LEAST ONE must be true
-
-The RIGHT-HAND RULE solves many mazes:
-
-  while (not goalReached()) {
-      if (rightIsClear()) {
-          turnRight()
+  for (t in range(2)) {          <- outer
+      while (frontIsClear()) {   <- inner: climb
           move()
-      } elif (frontIsClear()) {
-          move()
-      } else {
-          turnLeft()
       }
+      turnBack()
+      while (frontIsClear()) {   <- inner: descend
+          move()
+      }
+      turnLeft()
+      move()
+      move()
+      turnLeft()
+  }
+  while (frontIsClear()) {       <- last tooth
+      move()
   }
 
-It handles every junction automatically
-because it reads the real environment
-each step — no manual counting needed!"""
+The inner while handles teeth of ANY height,
+so one piece of code clears every variation.
+turnBack() spins you 180 degrees."""
 	},
 
 	# ──────────────────────────────────────────────────────────────────────
-	# Level 10 — All Concepts ("The Labyrinth")
-	# Concept : Functions, while, not, variables, if/elif/else — all together.
-	# Grid    : Long winding maze. S(1,8) → north 7 → east 3 → south 3
-	#           → east 2 → north 3 → east 2 → G(8,1).
-	# Solution: function followWall(){ right-hand step }
-	#           var steps = 0
-	#           while(not goalReached()): followWall(); steps = steps+1
+	# Level 10 — Boolean Logic ("The Right Wall")
+	# Concept : not / and / or, and the named right-hand-rule maze solver.
+	# Grid    : Winding mazes (3 variants). Hard-coded turns fail; the
+	#           sensor-driven follower adapts to each shape.
+	# Solution: the right-hand rule.
 	# ──────────────────────────────────────────────────────────────────────
 	{
 		"level_id": 10,
-		"level_name": "The Labyrinth",
-		"level_description": "Use every concept you've learned to escape the labyrinth",
+		"level_name": "The Right Wall",
+		"level_description": "Learn boolean logic (not, and, or) and the right-hand rule that solves any maze.",
 		"difficulty": 4,
 		"layout": """##########
 #....#..G#
@@ -810,15 +906,29 @@ each step — no manual counting needed!"""
 ###.########
 ###.########
 #S..########
-############"""
+############""",
+			"""##########
+#......#G#
+#.####.#.#
+#.#..#.#.#
+#.#..#...#
+#.#..#####
+#.#.......#
+#.########
+#S########
+##########"""
 		],
-		"starter_code": """# The ultimate challenge — use everything you've learned!
+		"starter_code": """# These mazes twist unpredictably — a fixed list of turns
+# can never solve all three. You need a rule that READS the
+# maze and decides as it goes.
 #
-# Wrap your navigation logic in a function,
-# loop until the goal is reached,
-# and track your steps with a variable.
-
-function followWall() {
+# New operators:
+#   not  -> flips true/false:   while (not goalReached())
+#   and  -> true if BOTH true:  frontIsClear() and rightIsClear()
+#   or   -> true if EITHER true
+#
+# The RIGHT-HAND RULE: keep your right hand on the wall.
+while (not goalReached()) {
     if (rightIsClear()) {
         turnRight()
         move()
@@ -827,12 +937,6 @@ function followWall() {
     } else {
         turnLeft()
     }
-}
-
-steps = 0
-while (not goalReached()) {
-    followWall()
-    steps = steps + 1
 }
 """,
 		"solution_code": """while (not goalReached()) {
@@ -846,13 +950,23 @@ while (not goalReached()) {
     }
 }
 """,
-		"hint_text": """Level 10 — All Concepts
+		"hint_text": """Level 10 — Boolean Logic
 
-This is your graduation exam.
-Combine everything:
+A boolean is a true/false value. Sensors
+return booleans, and operators combine them:
 
-  function followWall() {      <- function
-      if (rightIsClear()) {    <- if/elif/else
+  not goalReached()          <- flip: true until you arrive
+  frontIsClear() and rightIsClear()   <- both true
+  frontIsClear() or  rightIsClear()   <- at least one true
+
+THE RIGHT-HAND RULE
+Imagine dragging your right hand along the
+wall. You always try to turn right; if you
+can't, go straight; if you can't, turn left.
+Loop that until you reach the goal:
+
+  while (not goalReached()) {
+      if (rightIsClear()) {
           turnRight()
           move()
       } elif (frontIsClear()) {
@@ -862,21 +976,1096 @@ Combine everything:
       }
   }
 
-  steps = 0                    <- variable
-  while (not goalReached()) {  <- while + not
-      followWall()             <- function call
-      steps = steps + 1        <- accumulator
+Because it reads the real maze each step, the
+SAME code solves all three variations — no
+counting, no memorizing turns."""
+	},
+
+	# ──────────────────────────────────────────────────────────────────────
+	# Level 11 — Hazard Dodge ("Danger Zone")
+	# Concept : Navigate mazes with hazards — wrong turns kill you.
+	#           The right-hand rule still works because hazards are walls
+	#           to the algorithm (not walkable), but the student must
+	#           understand that sensors treat hazards as blocked.
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 11,
+		"level_name": "Danger Zone",
+		"level_description": "Apply the right-hand rule with hazards: sensors treat danger cells as walls.",
+		"difficulty": 4,
+		"layout": """##########
+#G..#.####
+#.#.#.####
+#.#...####
+#.#X######
+#.#.######
+#...######
+###..#####
+#S...#####
+##########""",
+		"variants": [
+			"""##########
+#G..#.####
+#.#.#.####
+#.#...####
+#.#X######
+#.#.######
+#...######
+###..#####
+#S...#####
+##########""",
+			"""##########
+####..G###
+####.#.###
+#....#.###
+#.#X.#.###
+#.##.#.###
+#....#.###
+######.###
+#S.....###
+##########""",
+			"""############
+###G.....###
+###.####.###
+###.#..#.###
+###.#.X#.###
+###.#..#.###
+###.####.###
+###......###
+#S..########
+############"""
+		],
+		"starter_code": """# Hazards (X) will kill LediBug!
+# Sensors treat hazards as walls — frontIsClear() returns false.
+# The safe path avoids all hazards.
+#
+# The right-hand rule still works here:
+while (not goalReached()) {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"solution_code": """while (not goalReached()) {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"hint_text": """Level 11 — Hazard Dodge
+
+Hazards (red X cells) kill LediBug instantly!
+
+But here's the key insight:
+  frontIsClear() returns FALSE for hazards.
+  rightIsClear() returns FALSE for hazards.
+  leftIsClear() returns FALSE for hazards.
+
+Sensors treat hazards like walls — so the
+right-hand rule naturally avoids them!
+
+The challenge: each variation has hazards
+in different spots, blocking the 'obvious'
+path. Your code must handle all three.
+
+  while (not goalReached()) {
+      if (rightIsClear()) {
+          turnRight()
+          move()
+      } elif (frontIsClear()) {
+          move()
+      } else {
+          turnLeft()
+      }
+  }"""
+	},
+
+	# ──────────────────────────────────────────────────────────────────────
+	# Level 12 — Dead Ends ("Backtracker")
+	# Concept : Mazes with dead ends that require the bug to turn around.
+	#           Tests that the student's algorithm handles the case where
+	#           right is blocked AND front is blocked — must turn left
+	#           (possibly multiple times) to escape a dead end.
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 12,
+		"level_name": "Backtracker",
+		"level_description": "Master dead ends: watch the right-hand rule turn around and escape on its own.",
+		"difficulty": 4,
+		"layout": """##########
+##G..#####
+##.#.#####
+##.#.#####
+##.#..####
+##.##.####
+##....####
+##.#######
+#S.#######
+##########""",
+		"variants": [
+			"""##########
+##G..#####
+##.#.#####
+##.#.#####
+##.#..####
+##.##.####
+##....####
+##.#######
+#S.#######
+##########""",
+			"""##########
+#######G##
+#######.##
+###.....##
+###.##.###
+###.##.###
+#......###
+#.########
+#S########
+##########""",
+			"""############
+########G.##
+########.###
+##.......###
+##.##.######
+##.##.######
+##....######
+##.#########
+#S.#########
+############"""
+		],
+		"starter_code": """# Dead ends are tricky — LediBug must turn around.
+# When front is blocked AND right is blocked, turnLeft().
+# If left is also blocked? turnLeft() again (turns 180°).
+#
+# The right-hand rule handles dead ends naturally:
+# it keeps turning left until a path opens up.
+
+while (not goalReached()) {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"solution_code": """while (not goalReached()) {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"hint_text": """Level 12 — Dead Ends
+
+Dead ends are corridors with only one exit.
+When LediBug enters one, it must turn around.
+
+How the right-hand rule handles this:
+  1. rightIsClear()? No → skip
+  2. frontIsClear()? No → skip
+  3. else: turnLeft()
+
+On the next loop iteration:
+  1. rightIsClear()? No → skip
+  2. frontIsClear()? Maybe! If yes, move.
+     If not, turnLeft() again (now facing back).
+
+Eventually LediBug faces the exit and moves.
+The algorithm handles 1, 2, or 3 turn-arounds
+automatically — no special dead-end code needed!
+
+Each variant has dead ends in different places.
+One code solves all three."""
+	},
+
+	# ──────────────────────────────────────────────────────────────────────
+	# Level 13 — Structuring with Functions + LAVA ("Lava Field")
+	# Concept : Move the right-hand-rule step into a named function and call
+	#           it from a small loop — clean, readable structure at scale.
+	#           NEW HAZARD: the corridor walls are LAVA (L). Sensors treat
+	#           lava exactly like a wall, so the wall-follower steers clear.
+	# Solution: function step(){ right-hand step }; while(not goal) step()
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 13,
+		"level_name": "Lava Field",
+		"level_description": "Structure code with a function — and meet LAVA. Your wall-follower avoids the deadly cells automatically.",
+		"difficulty": 5,
+		"layout": """##########
+#........#
+#LLLLLLL.#
+#........#
+#.LLLLLLL#
+#........#
+#LLLLLLL.#
+#......G.#
+#.LLLLLLL#
+#S.......#
+##########""",
+		"variants": [
+			"""##########
+#........#
+#LLLLLLL.#
+#........#
+#.LLLLLLL#
+#........#
+#LLLLLLL.#
+#......G.#
+#.LLLLLLL#
+#S.......#
+##########""",
+			"""##########
+#........#
+#.LLLL.L.#
+#.L..L.L.#
+#.L..L.L.#
+#.L..L.LG#
+#.L..L...#
+#.LLLL.LL#
+#S.......#
+##########""",
+			"""############
+#..........#
+#LLLLLLLLL.#
+#..........#
+#.LLLLLLLLL#
+#..........#
+#LLLLLLLLL.#
+#........G.#
+#.LLLLLLLLL#
+#S.........#
+############"""
+		],
+		"starter_code": """# These mazes are large and open — and the walls are now
+# LAVA (the red cells). Touching lava ends the run!
+#
+# Good news: rightIsClear(), frontIsClear() and leftIsClear()
+# treat lava EXACTLY like a wall, so the right-hand rule keeps
+# you safely in the open corridors without any extra code.
+#
+# The right-hand rule still works, but a long loop body gets
+# hard to read. Good practice: give the rule a NAME by putting
+# it in a function, then call it from a tiny loop.
+#
+#   function step() {
+#       ... one right-hand-rule step ...
+#   }
+#   while (not goalReached()) {
+#       step()
+#   }
+
+function step() {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
+while (not goalReached()) {
+    step()
+}
+""",
+		"solution_code": """function step() {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
+while (not goalReached()) {
+    step()
+}
+""",
+		"hint_text": """Level 13 — Structuring with Functions
+
+As programs grow, readability matters.
+Instead of one big loop body, give your
+logic a NAME by wrapping it in a function:
+
+  function step() {
+      if (rightIsClear()) {
+          turnRight()
+          move()
+      } elif (frontIsClear()) {
+          move()
+      } else {
+          turnLeft()
+      }
   }
 
-The maze is long — sequential commands
-will not cut it. You need the full toolkit.
+Now the main loop reads like plain English:
 
-Concepts used:
-  Functions with logic inside
-  While loop with boolean condition
-  If / elif / else branching
-  Variables as accumulators
-  Sensor functions (rightIsClear, etc.)"""
+  while (not goalReached()) {
+      step()
+  }
+
+The corridors here are lined with LAVA — but
+rightIsClear() and frontIsClear() see lava just
+like a wall, so the SAME wall-follower steers
+around it safely. No extra danger-handling code!
+
+Same behaviour as before, but the intent is
+obvious at a glance. These lava mazes still
+yield to the right-hand rule — you're just
+organizing it more cleanly. One function,
+called every step, solves all variations."""
+	},
+
+	# ──────────────────────────────────────────────────────────────────────
+	# Level 14 — Do-While ("Inward Spiral")
+	# Concept : do { ... } while (cond) — run the body once, THEN check.
+	# Grid    : Spiral mazes; the bug always takes at least one step before
+	#           it could possibly be on the goal.
+	# Solution: do { right-hand step } while (not goalReached())
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 14,
+		"level_name": "Inward Spiral",
+		"level_description": "Learn do-while: run the body once before checking the condition.",
+		"difficulty": 5,
+		"layout": """##########
+#........#
+#.######.#
+#.#....#.#
+#.#.G#.#.#
+#.#..#.#.#
+#.####.#.#
+#......#.#
+########.#
+#S.......#
+##########""",
+		"variants": [
+			"""##########
+#........#
+#.######.#
+#.#....#.#
+#.#.G#.#.#
+#.#..#.#.#
+#.####.#.#
+#......#.#
+########.#
+#S.......#
+##########""",
+			"""############
+#..........#
+##########.#
+#..........#
+#.##########
+#..........#
+##########.#
+#.......G..#
+#.##########
+#..........#
+##########.#
+#S.........#
+############""",
+			"""##########
+#........#
+########.#
+#......#.#
+#.####.#.#
+#.#G.#.#.#
+#.##.#.#.#
+#....#.#.#
+######.#.#
+#S.....#.#
+##########"""
+		],
+		"starter_code": """# The goal is at the CENTER of a spiral, so LediBug always
+# has to take at least one step before it could be on the goal.
+#
+# A do-while loop fits perfectly: it runs the body ONCE,
+# and only THEN checks whether to repeat.
+#
+#   do {
+#       ... one right-hand-rule step ...
+#   } while (not goalReached())
+#
+# Compare to a while loop, which checks the condition FIRST.
+
+do {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+} while (not goalReached())
+""",
+		"solution_code": """do {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+} while (not goalReached())
+""",
+		"hint_text": """Level 14 — Do-While
+
+A normal while loop checks its condition
+BEFORE running the body:
+
+  while (not goalReached()) { ... }
+
+A do-while loop runs the body ONCE FIRST,
+then checks whether to repeat:
+
+  do {
+      ... step ...
+  } while (not goalReached())
+
+The difference: the body always runs at
+least once. That fits a spiral perfectly —
+the goal is at the center, so you must move
+before you could ever arrive.
+
+  do {
+      if (rightIsClear()) {
+          turnRight()
+          move()
+      } elif (frontIsClear()) {
+          move()
+      } else {
+          turnLeft()
+      }
+  } while (not goalReached())
+
+Same right-hand rule, new loop shape. Each
+variant is a different spiral; one do-while
+solves them all."""
+	},
+
+	# ──────────────────────────────────────────────────────────────────────
+	# Level 15 — Ultimate Maze ("Gauntlet")
+	# Concept : Everything combined — large complex mazes with hazards,
+	#           dead ends, wide areas, and spirals. The final challenge.
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 15,
+		"level_name": "The Gauntlet",
+		"level_description": "Capstone: combine loops, functions, sensors and the right-hand rule on the biggest mazes.",
+		"difficulty": 5,
+		"layout": """############
+#..........#
+#.########.#
+#.#......#.#
+#.#.####.#.#
+#.#.#..#.#.#
+#.#.#G.#.#.#
+#.#.##.#.#.#
+#.#....#.#.#
+#.######.#.#
+#........#.#
+##########.#
+#S.........#
+############""",
+		"variants": [
+			"""############
+#..........#
+#.########.#
+#.#......#.#
+#.#.####.#.#
+#.#.#..#.#.#
+#.#.#G.#.#.#
+#.#.##.#.#.#
+#.#....#.#.#
+#.######.#.#
+#........#.#
+##########.#
+#S.........#
+############""",
+			"""############
+#..........#
+#.######.#.#
+#.#....#.#.#
+#.#.##.#.#.#
+#.#..#.#.#.#
+#.#..#.#.#G#
+#.####.#...#
+#......#.###
+########.###
+#S.......###
+############""",
+			"""##############
+#............#
+#.##########.#
+#.#........#.#
+#.#.######.#.#
+#.#.#....#.#.#
+#.#.#.G#.#.#.#
+#.#.#..#.#.#.#
+#.#.####.#.#.#
+#.#......#.#.#
+#.########.#.#
+#..........#.#
+############.#
+#S...........#
+##############"""
+		],
+		"starter_code": """# The Gauntlet — the final test of your algorithm.
+# These are the largest and most complex mazes.
+# Multiple layers of walls, nested corridors,
+# and the goal buried deep inside.
+#
+# If your right-hand rule works here,
+# it works EVERYWHERE.
+#
+# function navigate() — wrap it in a function
+# to show you've mastered the concept!
+
+function navigate() {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
+
+while (not goalReached()) {
+    navigate()
+}
+""",
+		"solution_code": """while (not goalReached()) {
+    if (rightIsClear()) {
+        turnRight()
+        move()
+    } elif (frontIsClear()) {
+        move()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"hint_text": """Level 15 — The Gauntlet
+
+Congratulations on reaching the final level!
+
+These are large, multi-layered mazes.
+The goal is deeply nested inside concentric
+walls — the longest paths yet.
+
+By now you know the secret:
+  The right-hand rule solves ANY maze
+  that has a connected path from start
+  to goal (no islands).
+
+What you've learned across all levels:
+  1. Sequential commands (levels 1-2)
+  2. Loops: for and while (levels 2-3)
+  3. Sensors and conditions (levels 3-4)
+  4. If/elif/else branching (level 4)
+  5. Functions (level 5)
+  6. Nested loops (level 6)
+  7. Variables (level 7)
+  8. Parameters (level 8)
+  9. Boolean logic (level 9)
+  10-15. Combining everything!
+
+One algorithm. Infinite mazes. That's
+the power of programming."""
+	},
+
+	# ──────────────────────────────────────────────────────────────────────
+	# LEVEL 16: The Locked Gate — introduces KEYS and DOORS
+	# A 🔑 KEY is picked up automatically just by walking over it.
+	# A 🚪 DOOR is locked: stepping into it spends one key to open it.
+	# A wall-follower solves these because the key always sits on the
+	# path BEFORE the door it unlocks.
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 16,
+		"level_name": "The Locked Gate",
+		"level_description": "Meet KEYS and DOORS. Grab the key, then the door opens itself when you walk into it.",
+		"difficulty": 4,
+		"layout": """##########
+####G#####
+####D#####
+####.#####
+####.#####
+####K#####
+####.#####
+####.#####
+####S#####
+##########""",
+		"variants": [
+			"""##########
+####G#####
+####D#####
+####.#####
+####.#####
+####K#####
+####.#####
+####.#####
+####S#####
+##########""",
+			"""##########
+##.K.D.G##
+##.#######
+##.#######
+##.#######
+##.#######
+##.#######
+##S#######
+##########"""
+		],
+		"starter_code": """# NEW: keys and doors!
+#   🔑 KEY  — walk over it and LediBug grabs it automatically.
+#   🚪 DOOR — locked. Walk into it and it spends ONE key to open.
+#
+# The key always sits on the path BEFORE the door, so you don't
+# need anything fancy — just follow the corridor to the goal.
+#
+# You can also ASK if you're carrying a key with the new sensor:
+#       hasKey()   ->  true once you've picked one up
+#
+# Walk forward until a wall stops you, then turn to follow the path:
+
+while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"solution_code": """while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"hint_text": """Level 16 — The Locked Gate
+
+Two new tiles appear here:
+  🔑 KEY  — you collect it just by stepping on it.
+  🚪 DOOR — locked until you spend a key on it.
+            Walking into a door opens it automatically
+            (it uses up one key).
+
+The key is always on the path before its door,
+so a normal wall-follower walks right through:
+
+  1. Move forward while the way ahead is clear.
+  2. When a wall blocks you, turn toward the
+     open side (right if you can, otherwise left).
+  3. Repeat until you reach the goal.
+
+Tip: the new sensor hasKey() reports true once
+you're carrying a key — handy for making choices."""
+	},
+
+	# ──────────────────────────────────────────────────────────────────────
+	# LEVEL 17: Double Lock — two keys, two doors on one winding corridor.
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 17,
+		"level_name": "Double Lock",
+		"level_description": "Two keys, two doors. Each key opens the next gate — collect them in order along the path.",
+		"difficulty": 4,
+		"layout": """############
+#####G######
+#####D######
+#####.######
+#####K######
+#####.######
+#####D######
+#####.######
+#####K######
+#####.######
+#####S######
+############""",
+		"variants": [
+			"""############
+#####G######
+#####D######
+#####.######
+#####K######
+#####.######
+#####D######
+#####.######
+#####K######
+#####.######
+#####S######
+############""",
+			"""############
+#...K..D..G#
+#.##########
+#D##########
+#.##########
+#K##########
+#.##########
+#S##########
+############"""
+		],
+		"starter_code": """# Two locks this time! There are TWO keys and TWO doors.
+# Every key sits just before the door it opens, so if you
+# keep following the corridor you'll always be holding a key
+# right when you reach a gate.
+#
+# Same wall-follower as before — it doesn't care how many
+# doors there are:
+
+while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"solution_code": """while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"hint_text": """Level 17 — Double Lock
+
+Now there are TWO keys and TWO doors.
+
+Each door spends exactly one key, and the keys are
+laid out so you always pick one up just before you
+need it. That means the same simple rule still works:
+
+  • Go forward while you can.
+  • Turn at every wall.
+  • Walk straight into the doors — each one opens
+    itself with the key you're carrying.
+
+You never have to count keys yourself; LediBug
+spends them automatically, one per door."""
+	},
+
+	# ──────────────────────────────────────────────────────────────────────
+	# LEVEL 18: The Vault Run — a longer Z-shaped corridor with keys/doors.
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 18,
+		"level_name": "The Vault Run",
+		"level_description": "A longer, winding route with keys and doors around every corner. Trust your wall-follower.",
+		"difficulty": 5,
+		"layout": """##########
+########G#
+########.#
+########D#
+########.#
+#...D.K..#
+#.########
+#K########
+#.########
+#S########
+##########""",
+		"variants": [
+			"""##########
+########G#
+########.#
+########D#
+########.#
+#...D.K..#
+#.########
+#K########
+#.########
+#S########
+##########""",
+			"""##########
+#G########
+#.########
+#D########
+#.########
+#..K.D...#
+########.#
+########K#
+########.#
+########S#
+##########"""
+		],
+		"starter_code": """# The route twists around several corners now, and the
+# keys and doors are spread along the way. Don't try to
+# plan every turn by hand — let the wall-follower do it.
+#
+# As long as you turn at every wall and walk straight into
+# the doors, you'll collect each key in time to open the
+# next gate.
+
+while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"solution_code": """while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"hint_text": """Level 18 — The Vault Run
+
+A longer, Z-shaped corridor with keys and doors
+tucked around the bends.
+
+The trick is the same one you already know:
+follow the corridor. Move forward until a wall
+stops you, turn toward the opening, and repeat.
+
+Because every key is placed before the door it
+unlocks, you'll always be carrying what you need
+exactly when you reach a gate.
+
+One algorithm handles every twist."""
+	},
+
+	# ──────────────────────────────────────────────────────────────────────
+	# LEVEL 19: Lava Locks — keys/doors plus deadly LAVA lining the path.
+	# Sensors treat lava like a wall, so the follower stays safe.
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 19,
+		"level_name": "Lava Locks",
+		"level_description": "Keys, doors AND lava together. Your sensors avoid lava like a wall, so the same rule keeps you safe.",
+		"difficulty": 5,
+		"layout": """##########
+###LGL####
+###LDL####
+###L.L####
+###LKL####
+###L.L####
+###L.L####
+###LSL####
+##########""",
+		"variants": [
+			"""##########
+###LGL####
+###LDL####
+###L.L####
+###LKL####
+###L.L####
+###L.L####
+###LSL####
+##########""",
+			"""##########
+##....D.G#
+##.LLLLLL#
+#L.L######
+#LKL######
+#L.L######
+#L.L######
+#LSL######
+##########"""
+		],
+		"starter_code": """# Everything at once: keys, doors, AND lava (the red cells).
+# Touching lava ends the run instantly!
+#
+# Good news — frontIsClear(), rightIsClear() and leftIsClear()
+# treat lava EXACTLY like a wall, so the wall-follower keeps you
+# safely on the open path. And the key still sits before the
+# door, so the gate opens as you walk into it.
+#
+# No new code needed — your trusty corridor follower handles it:
+
+while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"solution_code": """while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"hint_text": """Level 19 — Lava Locks
+
+This level combines three ideas:
+  🔑 keys, 🚪 doors, and 🔥 LAVA.
+
+Lava is deadly — one step ends the run. But your
+sensors already know that: they report lava as
+"not clear", just like a wall. So a wall-follower
+naturally hugs the safe corridor and never steps
+into the fire.
+
+The key is on the path before the door, so the
+gate opens itself as you pass through.
+
+Same loop, more danger — and you're ready for it."""
+	},
+
+	# ──────────────────────────────────────────────────────────────────────
+	# LEVEL 20: The Grand Vault — capstone: 2 keys, 2 doors, lava, winding.
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 20,
+		"level_name": "The Grand Vault",
+		"level_description": "The final challenge: two keys, two doors, lava and twisting corridors. One algorithm to rule them all.",
+		"difficulty": 5,
+		"layout": """##########
+###LGL####
+###LDL####
+###L.L####
+###LKL####
+###L.L####
+###LDL####
+###L.L####
+###LKL####
+###L.L####
+###LSL####
+##########""",
+		"variants": [
+			"""##########
+###LGL####
+###LDL####
+###L.L####
+###LKL####
+###L.L####
+###LDL####
+###L.L####
+###LKL####
+###L.L####
+###LSL####
+##########""",
+			"""##########
+#G########
+#.L#######
+#D########
+#.L#######
+#..K.D...#
+######L#.#
+#######LK#
+########.#
+########S#
+##########"""
+		],
+		"starter_code": """# THE GRAND VAULT — the final test.
+# Two keys, two doors, lava walls, and winding corridors,
+# all in one maze.
+#
+# You have everything you need. The same algorithm you've
+# trusted all along solves it: keys are collected on the way,
+# doors open when you walk into them, and lava reads as a wall
+# to your sensors.
+#
+# Optional flourish: wrap the rule in a function to show you've
+# mastered it.
+
+function step() {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+
+while (not goalReached()) {
+    step()
+}
+""",
+		"solution_code": """while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"hint_text": """Level 20 — The Grand Vault
+
+The grand finale! This maze brings together
+everything you've learned:
+
+  🔑 two keys to collect
+  🚪 two doors to open
+  🔥 lava to avoid
+  ↪ corridors that twist and turn
+
+And yet the solution hasn't changed. One simple
+wall-following loop:
+
+  • move forward while the path is clear
+  • turn at every wall
+  • walk straight into the doors
+
+Keys are gathered automatically, doors spend them
+for you, and lava counts as a wall to your sensors.
+
+That's the real lesson of LediBug:
+a good algorithm solves a whole family of puzzles,
+not just one. Congratulations — you've mastered it!"""
 	}
 ]
 

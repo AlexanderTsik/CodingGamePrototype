@@ -86,6 +86,7 @@ func stop():
 func _execute_statement(statement):
 	if not is_running:
 		return
+	var node_type := "Unknown"
 	
 	iteration_count += 1
 	if iteration_count > max_iterations:
@@ -126,35 +127,47 @@ func _execute_statement(statement):
 		# statements run with no artificial per-line delay.
 	
 	if statement is ASTNodes.CallNode:
+		node_type = "Call"
 		await _execute_function_call(statement)
 	
 	elif statement is ASTNodes.AssignmentNode:
+		node_type = "Assignment"
 		await _execute_assignment(statement)
 	
 	elif statement is ASTNodes.IfNode:
+		node_type = "If"
 		await _execute_if(statement)
 	
 	elif statement is ASTNodes.ForNode:
+		node_type = "For"
 		await _execute_for(statement)
 	
 	elif statement is ASTNodes.WhileNode:
+		node_type = "While"
 		await _execute_while(statement)
 	
 	elif statement is ASTNodes.DoWhileNode:
+		node_type = "DoWhile"
 		await _execute_do_while(statement)
 	
 	elif statement is ASTNodes.ReturnNode:
+		node_type = "Return"
 		await _execute_return(statement)
 	
 	elif statement is ASTNodes.FunctionNode:
+		node_type = "Function"
 		# Function definitions are already collected
 		pass
 	
 	elif statement is ASTNodes.BlockNode:
+		node_type = "Block"
 		await _execute_block(statement.statements)
 	
 	else:
 		_error("Unknown statement type: %s" % statement.node_type)
+
+	if statement.line_number > 0:
+		line_executed.emit(statement.line_number, node_type)
 
 func _execute_builtin_command(cmd_name: String, arguments: Array):
 	if not current_player:
@@ -192,27 +205,27 @@ func _beat(base: float) -> void:
 	if d > 0.0:
 		await get_tree().create_timer(d).timeout
 
-func _execute_function_call(call: ASTNodes.CallNode):
-	var func_name = call.function_name
+func _execute_function_call(call_node: ASTNodes.CallNode):
+	var func_name = call_node.function_name
 	
 	# Check if it's a built-in command first
 	if func_name in ["move", "turnRight", "turnLeft", "turnBack"]:
-		await _execute_builtin_command(func_name, call.arguments)
+		await _execute_builtin_command(func_name, call_node.arguments)
 		return
 	
 	# Check if it's a sensing function (returns a value)
-	if func_name in ["frontIsClear", "leftIsClear", "rightIsClear", "goalReached", "onHazard"]:
+	if func_name in ["frontIsClear", "leftIsClear", "rightIsClear", "goalReached", "onHazard", "hasKey"]:
 		# These are handled in _evaluate_expression, not here
 		_error("Sensing function '%s' must be used in an expression (if/while condition)" % func_name)
 		return
 	
 	# Otherwise, call a user-defined function (statement context: ignore its return)
-	await _invoke_function(call)
+	await _invoke_function(call_node)
 
-func _invoke_function(call: ASTNodes.CallNode):
+func _invoke_function(call_node: ASTNodes.CallNode):
 	"""Run a user-defined function and return its return value. Used for both
 	statement calls and calls embedded in expressions (e.g. x = f(), if f() > 1)."""
-	var func_name = call.function_name
+	var func_name = call_node.function_name
 	if not func_name in user_functions:
 		_error("Undefined function: %s" % func_name)
 		return null
@@ -221,7 +234,7 @@ func _invoke_function(call: ASTNodes.CallNode):
 
 	# Evaluate arguments (an argument may itself contain a function call -> await)
 	var args = []
-	for arg in call.arguments:
+	for arg in call_node.arguments:
 		args.append(await _evaluate_expression(arg))
 
 	if args.size() != func_def.parameters.size():
@@ -263,7 +276,7 @@ func _invoke_function(call: ASTNodes.CallNode):
 
 func _execute_assignment(assign: ASTNodes.AssignmentNode):
 	var value = await _evaluate_expression(assign.value)
-	_set_variable(assign.variable_name, value)
+	_assign_variable(assign.variable_name, value)
 	# Emit signal for variable change
 	variable_changed.emit(assign.variable_name, value)
 
@@ -391,7 +404,7 @@ func _evaluate_expression(expr):
 	elif expr is ASTNodes.CallNode:
 		var func_name = expr.function_name
 		# Built-in sensing functions return a value directly
-		if func_name in ["frontIsClear", "leftIsClear", "rightIsClear", "goalReached", "onHazard"]:
+		if func_name in ["frontIsClear", "leftIsClear", "rightIsClear", "goalReached", "onHazard", "hasKey"]:
 			return _evaluate_sensing_function(func_name)
 		# Movement commands don't return a value
 		if func_name in ["move", "turnRight", "turnLeft", "turnBack"]:
@@ -421,6 +434,8 @@ func _evaluate_sensing_function(func_name: String):
 			return current_player.is_on_goal()
 		"onHazard":
 			return current_player.is_on_hazard()
+		"hasKey":
+			return current_player.has_key()
 		_:
 			_error("Unknown sensing function: %s" % func_name)
 			return false
@@ -537,24 +552,38 @@ func _pop_scope():
 	if scope_stack.size() > 0:
 		scope_stack.pop_back()
 
-func _set_variable(name: String, value):
-	# Set in current scope
+func _set_variable(var_name: String, value):
+	# Declare/bind in current scope (used for parameters and loop iterators)
 	if scope_stack.size() > 0:
-		scope_stack[scope_stack.size() - 1][name] = value
+		scope_stack[scope_stack.size() - 1][var_name] = value
 	else:
-		global_scope[name] = value
+		global_scope[var_name] = value
 
-func _get_variable(name: String):
+func _assign_variable(var_name: String, value):
+	# Assignment: update the variable where it already lives (innermost scope
+	# that defines it, then global). Only create a new one in the current
+	# scope if it does not exist anywhere. This lets a counter declared
+	# before a loop be updated from inside the loop body.
+	for i in range(scope_stack.size() - 1, -1, -1):
+		if var_name in scope_stack[i]:
+			scope_stack[i][var_name] = value
+			return
+	if var_name in global_scope:
+		global_scope[var_name] = value
+		return
+	_set_variable(var_name, value)
+
+func _get_variable(var_name: String):
 	# Search from innermost to outermost scope
 	for i in range(scope_stack.size() - 1, -1, -1):
-		if name in scope_stack[i]:
-			return scope_stack[i][name]
+		if var_name in scope_stack[i]:
+			return scope_stack[i][var_name]
 	
 	# Check global scope
-	if name in global_scope:
-		return global_scope[name]
+	if var_name in global_scope:
+		return global_scope[var_name]
 	
-	_error("Undefined variable: %s" % name)
+	_error("Undefined variable: %s" % var_name)
 	return null
 
 # ============================================

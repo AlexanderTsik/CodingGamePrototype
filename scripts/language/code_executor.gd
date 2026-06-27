@@ -14,6 +14,7 @@ func _ready():
 	# Connect signals
 	interpreter.execution_complete.connect(_on_execution_complete)
 	interpreter.execution_error.connect(_on_execution_error)
+	interpreter.line_executing.connect(_on_line_executing)
 
 func execute_code(code: String, player: Node2D):
 	# Tokenize — surface the first error instead of running a broken AST.
@@ -43,3 +44,6 @@ func _on_execution_complete():
 
 func _on_execution_error(error_msg: String):
 	execution_error.emit(error_msg)
+
+func _on_line_executing(line_number: int):
+	line_executing.emit(line_number)

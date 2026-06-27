@@ -173,9 +173,14 @@ func _request(url: String, method: int, headers: PackedStringArray, body: String
 	var data = await http.request_completed
 	http.queue_free()
 
+	var result_code : int            = data[0]
 	var http_code  : int             = data[1]
 	if http_code == 0:
-		push_error("[API] network error or timeout (code 0) for: %s" % url)
+		# No HTTP response: offline, DNS failure, or the request timed out.
+		# This is an expected state when the game runs without connectivity and
+		# callers already degrade gracefully, so log a quiet warning instead of
+		# a red error + stack trace.
+		push_warning("[API] no network response (result %d) for: %s" % [result_code, url])
 		return {"error": "network_error", "msg": "Network error — check your connection"}
 	var body_bytes : PackedByteArray = data[3]
 	var body_text  : String          = body_bytes.get_string_from_utf8()

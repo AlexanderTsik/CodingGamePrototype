@@ -8,10 +8,12 @@ extends Control
 @onready var restart_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/RestartButton
 @onready var next_level_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/NextLevelButton
 @onready var menu_button = $HSplitContainer/CodePanel/VSplitContainer/TopSection/ButtonContainer/MenuButton
-@onready var output_label = $HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputPanel/OutputMargin/OutputLabel
+@onready var output_label = $HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputPanel/OutputScroll/OutputMargin/OutputLabel
 @onready var title_label = $HSplitContainer/CodePanel/VSplitContainer/TopSection/TitleBar/TitleLabel
 @onready var player = $HSplitContainer/GamePanel/GridBackground/Level/Player
 @onready var code_executor = $CodeExecutor
+@onready var hsplit_container = $HSplitContainer
+@onready var vsplit_container = $HSplitContainer/CodePanel/VSplitContainer
 
 # Debug manager
 var debug_manager
@@ -68,6 +70,9 @@ var _completion_on       : bool  = true
 # Execution speed (shared by normal run and debug mode)
 var _exec_speed          : float = 1.0
 var _speed_label_toolbar : Label
+var _split_locked: bool = false
+var _locked_hsplit_offset: int = 0
+var _locked_vsplit_offset: int = 0
 
 var grid_manager: GridManager
 var is_level_complete: bool = false
@@ -98,11 +103,19 @@ var _rerun_after_variant: bool = false
 var _variant_intro_popup: AcceptDialog = null
 var _shown_variant_intro: bool = false
 
+# Interactive guided tutorial (offered once, the first time a level loads).
+var _tutorial_overlay: TutorialOverlay = null
+var _offered_tutorial: bool = false
+
+# First-encounter hazard/lava explanations (each shown at most once per session).
+var _explained_hazard: bool = false
+var _explained_lava: bool = false
+
 # Win / leaderboard popup (built + managed by win_popup.gd)
 var _win_popup: WinPopup
 
 # Available commands and keywords for code completion
-var available_commands = ["move()", "turnRight()", "turnLeft()", "turnBack()", "frontIsClear()", "goalReached()", "onHazard()", "leftIsClear()", "rightIsClear()"]
+var available_commands = ["move()", "turnRight()", "turnLeft()", "turnBack()", "frontIsClear()", "goalReached()", "onHazard()", "hasKey()", "leftIsClear()", "rightIsClear()"]
 var available_keywords = ["if", "else", "elif", "for", "while", "do", "function", "return", "in", "range", "and", "or", "not"]
 
 # Example code snippets
@@ -171,6 +184,7 @@ for (i in range(3)) {
 }
 
 func _ready():
+	set_process(true)
 	run_button.pressed.connect(_on_run_button_pressed)
 	stop_button.pressed.connect(_on_stop_button_pressed)
 	restart_button.pressed.connect(_on_restart_button_pressed)
@@ -243,6 +257,10 @@ func _ready():
 	_win_popup = WinPopup.new(self)
 	add_child(_win_popup)
 
+	# Setup interactive guided tutorial overlay
+	_tutorial_overlay = TutorialOverlay.new(self)
+	add_child(_tutorial_overlay)
+
 	# Set default example code
 	code_input.text = examples["simple_moves"]
 
@@ -253,7 +271,6 @@ func _ready():
 	
 	# Load selected level (from level select) or default to level 1
 	await get_tree().process_frame
-	
 	# Check for test level first (from level editor)
 	if get_tree().root.has_meta("test_level"):
 		var test_level = get_tree().root.get_meta("test_level")
@@ -272,6 +289,10 @@ func _ready():
 	else:
 		# Default to level 1
 		load_level(1)
+
+func _process(_delta: float) -> void:
+	if _split_locked:
+		_enforce_split_lock()
 
 func load_level(level_id: int):
 	"""Load a level by ID"""
@@ -300,6 +321,7 @@ func load_level(level_id: int):
 		grid_manager.level_completed.connect(_on_level_completed)
 		grid_manager.player_died.connect(_on_player_died)
 		grid_manager.variant_advanced.connect(_on_variant_advanced)
+		grid_manager.grid_changed.connect(_on_grid_changed)
 
 	if level_id > 5 and level_def.has("variants") and level_def["variants"] is Array and level_def["variants"].size() > 0:
 		for layout in level_def["variants"]:
@@ -333,6 +355,12 @@ func load_level(level_id: int):
 	if current_level_variants.size() > 0:
 		_show_variant_intro_if_needed()
 
+	# Offer the interactive tutorial the first time a level loads.
+	_offer_tutorial_if_needed()
+
+	# Explain hazards / lava the first time they appear on the grid.
+	_explain_hazards_if_needed()
+
 	Dbg.p("Loaded Level %d: %s" % [level_id, level_def["level_name"]])
 
 func _load_custom_level(level_def: Dictionary):
@@ -361,6 +389,7 @@ func _load_custom_level(level_def: Dictionary):
 		grid_manager.level_completed.connect(_on_level_completed)
 		grid_manager.player_died.connect(_on_player_died)
 		grid_manager.variant_advanced.connect(_on_variant_advanced)
+		grid_manager.grid_changed.connect(_on_grid_changed)
 
 	grid_manager.clear_active_variants()
 	grid_manager.load_level_from_string(level_def["layout"])
@@ -388,7 +417,20 @@ func _load_custom_level(level_def: Dictionary):
 	# Custom levels never have variants — hide the preview bar.
 	_update_variant_bar()
 
+	# Offer the interactive tutorial the first time a level loads.
+	_offer_tutorial_if_needed()
+
+	# Explain hazards / lava the first time they appear on the grid.
+	_explain_hazards_if_needed()
+
 	Dbg.p("Loaded Custom Level: %s (source: %s)" % [lvl_name, current_level_source])
+
+func _on_grid_changed() -> void:
+	"""The grid mutated at runtime (a key was picked up or a door opened).
+	Redraw the grid background so the change is visible."""
+	var grid_bg = get_node_or_null("HSplitContainer/GamePanel/GridBackground")
+	if grid_bg and grid_bg.has_method("refresh"):
+		grid_bg.refresh()
 
 func _reset_player_and_refresh_grid(preserve_move_count: bool = false) -> void:
 	var previous_moves := 0
@@ -584,6 +626,7 @@ func _on_variant_preview_pressed(idx: int) -> void:
 func _setup_variant_intro_popup() -> void:
 	"""Create the one-time intro popup for multi-variant levels."""
 	_variant_intro_popup = AcceptDialog.new()
+	_variant_intro_popup.exclusive = false
 	_variant_intro_popup.title = "Multi-Variant Levels"
 	_variant_intro_popup.dialog_text = \
 """Starting from Level 6, every level has multiple variations of the same puzzle.
@@ -609,6 +652,153 @@ func _show_variant_intro_if_needed() -> void:
 	await get_tree().process_frame
 	_variant_intro_popup.popup_centered()
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Interactive guided tutorial
+# ─────────────────────────────────────────────────────────────────────────────
+
+func _offer_tutorial_if_needed() -> void:
+	"""The first time a level loads, ask the player if they want a guided tour.
+	On "Yes", the overlay walks through each control one step at a time."""
+	if _offered_tutorial or not _tutorial_overlay:
+		return
+	_offered_tutorial = true
+	# Wait one frame so the layout is settled before measuring control rects.
+	await get_tree().process_frame
+	# A first-time "Multi-Variant Levels" dialog may pop on this same level load.
+	# Two exclusive child windows can't be on screen at once (Godot logs an
+	# error and refuses the second), so wait for that dialog to close first.
+	while is_instance_valid(_variant_intro_popup) and _variant_intro_popup.visible:
+		await _variant_intro_popup.visibility_changed
+	_tutorial_overlay.begin(_build_tutorial_steps())
+
+func _build_tutorial_steps() -> Array:
+	"""Define the ordered tour: each step spotlights one control with a tip."""
+	var output_panel = get_node_or_null(
+		"HSplitContainer/CodePanel/VSplitContainer/TopSection/OutputPanel")
+	var game_panel = get_node_or_null("HSplitContainer/GamePanel")
+
+	var steps: Array = [
+		{
+			"node": code_input,
+			"title": "Write Your Code",
+			"text": "This is the code editor. Type commands here like move() and turnRight() to guide LediBug.",
+		},
+		{
+			"node": run_button,
+			"title": "Run",
+			"text": "When your code is ready, click Run to execute it and watch LediBug follow your instructions.",
+		},
+		{
+			"node": debug_button,
+			"title": "Debug",
+			"text": "Click Debug to run your code step by step. You can pause, step through each line, and inspect your variables to find out exactly what your program is doing.",
+		},
+		{
+			"node": stop_button,
+			"title": "Stop",
+			"text": "Click Stop to halt a running program at any moment.",
+		},
+		{
+			"node": restart_button,
+			"title": "Restart",
+			"text": "Restart resets the level back to the beginning so you can try a new approach.",
+		},
+		{
+			"node": help_button,
+			"title": "Help",
+			"text": "Stuck on the syntax? Click Help to open the full command reference — every command, keyword, and example in one place.",
+		},
+		{
+			"node": output_panel,
+			"title": "Output",
+			"text": "Messages, results, and any errors from your code appear here.",
+		},
+		{
+			"node": game_panel,
+			"title": "The Puzzle",
+			"text": "This is the grid. Guide LediBug to the goal while avoiding hazards.",
+		},
+		{
+			"node": menu_button,
+			"title": "Menu",
+			"text": "Use Menu to return to the main menu whenever you like. That's it — have fun!",
+		},
+	]
+
+	# Drop any steps whose target control isn't present in this scene.
+	var valid: Array = []
+	for step in steps:
+		if step["node"] != null and is_instance_valid(step["node"]):
+			valid.append(step)
+	return valid
+
+func _explain_hazards_if_needed() -> void:
+	"""The first time a HAZARD or LAVA cell appears on the grid, spotlight it
+	and explain what it is (with an arrow). Each kind is explained at most once
+	per session, and never while the guided tour is on screen."""
+	if _tutorial_overlay == null or _tutorial_overlay.is_active():
+		return
+	if _explained_hazard and _explained_lava:
+		return
+	if grid_manager == null or grid_manager.grid.is_empty():
+		return
+
+	# Find the first hazard cell and the first lava cell, if any.
+	var hazard_cell := Vector2i(-1, -1)
+	var lava_cell := Vector2i(-1, -1)
+	for y in range(grid_manager.grid_height):
+		for x in range(grid_manager.grid_width):
+			var ct: int = grid_manager.grid[y][x]
+			if ct == CellType.Type.HAZARD and hazard_cell.x < 0:
+				hazard_cell = Vector2i(x, y)
+			elif ct == CellType.Type.LAVA and lava_cell.x < 0:
+				lava_cell = Vector2i(x, y)
+
+	# Show only ONE explanation per level load (hazard takes priority).
+	var cell := Vector2i(-1, -1)
+	var title := ""
+	var text := ""
+	var accent := Color.WHITE
+	var is_hazard_kind := false
+	if hazard_cell.x >= 0 and not _explained_hazard:
+		cell = hazard_cell
+		is_hazard_kind = true
+		title = "Watch out — Hazard!"
+		text = "The glowing red cell is a HAZARD. If LediBug steps on it, the run ends instantly! Luckily your sensors — frontIsClear(), rightIsClear() and so on — treat hazards exactly like walls, so a wall-follower walks safely around them."
+		accent = Color(0.95, 0.30, 0.34)
+	elif lava_cell.x >= 0 and not _explained_lava:
+		cell = lava_cell
+		title = "Watch out — Lava!"
+		text = "The glowing orange cell is LAVA. Touching it is instant game over! Good news: your sensors see lava just like a wall, so following the open path keeps LediBug safe."
+		accent = Color(0.98, 0.52, 0.18)
+	else:
+		return
+
+	# Wait a frame so the grid has laid out and tile_size is current.
+	await get_tree().process_frame
+	# The tour may have appeared meanwhile — never overlap it.
+	if _tutorial_overlay.is_active():
+		return
+	# Mark explained only now that we are actually showing it.
+	if is_hazard_kind:
+		_explained_hazard = true
+	else:
+		_explained_lava = true
+	var getter := Callable(self, "_grid_cell_screen_rect").bind(cell)
+	_tutorial_overlay.explain(title, text, getter, accent)
+
+func _grid_cell_screen_rect(cell: Vector2i) -> Rect2:
+	"""Screen-space rect of one grid cell, used to anchor the spotlight/arrow."""
+	var grid_bg = get_node_or_null("HSplitContainer/GamePanel/GridBackground")
+	if grid_bg == null or grid_manager == null:
+		return Rect2()
+	var cs := float(grid_manager.tile_size)
+	var origin := (grid_bg as Control).get_global_rect().position
+	var off = grid_bg.get("grid_offset")
+	if off is Vector2:
+		origin += off
+	return Rect2(origin + Vector2(cell.x * cs, cell.y * cs), Vector2(cs, cs))
+
 func _on_code_completion_requested():
 	"""Provide categorized code completion options.
 
@@ -633,6 +823,7 @@ func _on_code_completion_requested():
 	_add_completion(CodeEdit.KIND_FUNCTION, "rightIsClear()", "rightIsClear()", leaf)
 	_add_completion(CodeEdit.KIND_FUNCTION, "goalReached()",  "goalReached()",  leaf)
 	_add_completion(CodeEdit.KIND_FUNCTION, "onHazard()",     "onHazard()",     leaf)
+	_add_completion(CodeEdit.KIND_FUNCTION, "hasKey()",       "hasKey()",       leaf)
 
 	# ── Keywords ─────────────────────────────────────────────────────────
 	_add_completion(CodeEdit.KIND_PLAIN_TEXT, "if",       "if ",       mauve)
@@ -657,6 +848,7 @@ func _on_run_button_pressed():
 	debug_mode = false
 	_hide_debug_ui()
 	_reset_variant_state_for_new_run()
+	_set_split_resize_enabled(false)
 	
 	# Reset level state
 	is_level_complete = false
@@ -686,6 +878,7 @@ func _on_debug_button_pressed():
 	debug_mode = true
 	_show_debug_ui()
 	_reset_variant_state_for_new_run()
+	_set_split_resize_enabled(false)
 	
 	# Reset level state
 	is_level_complete = false
@@ -714,11 +907,13 @@ func _on_stop_button_pressed():
 	"""Stop the currently executing code"""
 	_rerun_after_variant = false
 	code_executor.stop_execution()
+	_set_split_resize_enabled(true)
 	output_label.text = "Stopped."
 	output_label.add_theme_color_override("font_color", Color(0.647, 0.671, 0.780, 1))
 	run_button.disabled = false
 	debug_button.disabled = false
 	stop_button.disabled = true
+	_set_split_resize_enabled(true)
 	_set_variant_bar_interactive(true)
 	player.reset_position()
 
@@ -749,6 +944,7 @@ func _on_execution_complete():
 	run_button.disabled = false
 	debug_button.disabled = false
 	stop_button.disabled = true
+	_set_split_resize_enabled(true)
 	_set_variant_bar_interactive(true)
 
 	# Clear line highlighting after execution
@@ -762,6 +958,7 @@ func _on_restart_button_pressed():
 	# Stop any in-flight execution first to avoid the old run racing the new level.
 	if code_executor:
 		code_executor.stop_execution()
+	_set_split_resize_enabled(true)
 	if current_level_source == "builtin":
 		load_level(current_level_id)
 	else:
@@ -807,7 +1004,30 @@ func _on_player_died():
 	"""Called when player hits hazard"""
 	player_is_dead = true
 	code_executor.stop_execution()
+	_set_split_resize_enabled(true)
 	Dbg.p("💀 Player died!")
+
+func _set_split_resize_enabled(enabled: bool) -> void:
+	"""Enable/disable dragging of both main splitters during execution."""
+	_split_locked = not enabled
+	if _split_locked:
+		if hsplit_container:
+			_locked_hsplit_offset = hsplit_container.split_offset
+		if vsplit_container:
+			_locked_vsplit_offset = vsplit_container.split_offset
+	var mode := Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
+	if hsplit_container:
+		hsplit_container.mouse_filter = mode
+	if vsplit_container:
+		vsplit_container.mouse_filter = mode
+	if _split_locked:
+		_enforce_split_lock()
+
+func _enforce_split_lock() -> void:
+	if hsplit_container and hsplit_container.split_offset != _locked_hsplit_offset:
+		hsplit_container.split_offset = _locked_hsplit_offset
+	if vsplit_container and vsplit_container.split_offset != _locked_vsplit_offset:
+		vsplit_container.split_offset = _locked_vsplit_offset
 
 func _update_help_text():
 	output_label.text = """Movement Commands:
@@ -1149,7 +1369,8 @@ func _setup_help_system():
 	# Create debug button with orange/amber styling
 	debug_button = Button.new()
 	debug_button.text = "🐞 Debug"
-	debug_button.custom_minimum_size = Vector2(100, 30)
+	debug_button.custom_minimum_size = Vector2(72, 24)
+	debug_button.add_theme_font_size_override("font_size", 12)
 	debug_button.pressed.connect(_on_debug_button_pressed)
 	
 	# Apply orange/amber theme
@@ -1399,17 +1620,17 @@ func _on_variable_changed(var_name: String, value):
 		variable_labels[var_name] = label
 	
 	# Update variable display
-	var label = variable_labels[var_name]
+	var var_label = variable_labels[var_name]
 	var value_str = str(value)
-	label.text = "%s = %s" % [var_name, value_str]
+	var_label.text = "%s = %s" % [var_name, value_str]
 	
 	# Highlight changed variable briefly
-	label.add_theme_color_override("font_color", Color.YELLOW)
+	var_label.add_theme_color_override("font_color", Color.YELLOW)
 	
 	# Reset color after a short delay
 	await get_tree().create_timer(0.5).timeout
-	if label and is_instance_valid(label):
-		label.add_theme_color_override("font_color", Color.WHITE)
+	if var_label and is_instance_valid(var_label):
+		var_label.add_theme_color_override("font_color", Color.WHITE)
 
 func _on_function_entered(func_name: String, params: Dictionary):
 	"""Called when entering a function"""

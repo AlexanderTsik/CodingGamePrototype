@@ -76,7 +76,7 @@ func _create_level_buttons() -> void:
 
 		# ── Card shell ──────────────────────────────────────────────────────
 		var card := PanelContainer.new()
-		card.custom_minimum_size = Vector2(200, 145)
+		card.custom_minimum_size = Vector2(200, 190)
 		match difficulty:
 			1: card.add_theme_stylebox_override("panel", _s_card_easy)
 			2: card.add_theme_stylebox_override("panel", _s_card_medium)
@@ -103,6 +103,13 @@ func _create_level_buttons() -> void:
 		name_lbl.add_theme_font_size_override("font_size", 15)
 		name_lbl.add_theme_color_override("font_color", Color(0.87, 0.88, 0.96, 1))
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+		# Learning goal / description
+		var desc_lbl := Label.new()
+		desc_lbl.text = level_def.get("level_description", "")
+		desc_lbl.add_theme_font_size_override("font_size", 11)
+		desc_lbl.add_theme_color_override("font_color", Color(0.66, 0.72, 0.82, 1))
+		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 		# Difficulty badge
 		var diff_lbl := Label.new()
@@ -140,6 +147,7 @@ func _create_level_buttons() -> void:
 
 		vbox.add_child(num_lbl)
 		vbox.add_child(name_lbl)
+		vbox.add_child(desc_lbl)
 		vbox.add_child(diff_lbl)
 		vbox.add_child(variants_lbl)
 		vbox.add_child(spacer)

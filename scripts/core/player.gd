@@ -42,6 +42,7 @@ func reset_position():
 		grid_position = Vector2i(position / max(grid_manager.tile_size if grid_manager else 48, 1))
 	current_direction = Vector2i(0, -1)
 	move_count = 0
+	inventory.clear()
 	_update_facing_rotation()
 
 func _sync_sprite_and_position():
@@ -107,11 +108,26 @@ func _update_facing_rotation():
 			sprite.rotation = -PI/2
 
 # Environment checking functions
+func has_key() -> bool:
+	"""True if the bug is currently carrying at least one key."""
+	return inventory.has("key")
+
+func _can_enter(pos: Vector2i) -> bool:
+	"""Whether the bug could step into `pos` right now. Hazards block; a locked
+	door counts as passable only while we hold a key (we'd spend it to open it)."""
+	if not grid_manager:
+		return true
+	if grid_manager.is_hazard(pos):
+		return false
+	if grid_manager.is_door(pos):
+		return has_key()
+	return grid_manager.is_walkable(pos)
+
 func is_front_clear() -> bool:
 	if not grid_manager:
 		return true
 	var check_pos = grid_position + current_direction
-	var result = grid_manager.is_walkable(check_pos)
+	var result = _can_enter(check_pos)
 	Dbg.p("frontIsClear() - Facing: %v, Checking: %v, Result: %s" % [current_direction, check_pos, result])
 	return result
 
@@ -120,16 +136,14 @@ func is_left_clear() -> bool:
 		return true
 	# Rotate 90° counter-clockwise: (x, y) -> (y, -x)
 	var left_dir = Vector2i(current_direction.y, -current_direction.x)
-	var check_pos = grid_position + left_dir
-	return grid_manager.is_walkable(check_pos)
+	return _can_enter(grid_position + left_dir)
 
 func is_right_clear() -> bool:
 	if not grid_manager:
 		return true
 	# Rotate 90° clockwise: (x, y) -> (-y, x)
 	var right_dir = Vector2i(-current_direction.y, current_direction.x)
-	var check_pos = grid_position + right_dir
-	return grid_manager.is_walkable(check_pos)
+	return _can_enter(grid_position + right_dir)
 
 func is_on_goal() -> bool:
 	if not grid_manager:
@@ -151,8 +165,17 @@ func _attempt_move(direction: Vector2i, duration: float) -> void:
 		await _do_move(direction, duration)
 		return
 	
-	# Check if walkable
-	if not grid_manager.is_walkable(target_grid_pos):
+	# Locked door: spend a key to open it, otherwise it blocks like a wall.
+	if grid_manager.is_door(target_grid_pos):
+		if has_key():
+			inventory.erase("key")
+			grid_manager.set_cell(target_grid_pos, CellType.Type.EMPTY)
+			Dbg.p("Opened door at %v" % target_grid_pos)
+		else:
+			hit_wall.emit()
+			Dbg.p("Door locked at %v (no key)" % target_grid_pos)
+			return
+	elif not grid_manager.is_walkable(target_grid_pos):
 		hit_wall.emit()
 		Dbg.p("Hit wall at %v" % target_grid_pos)
 		return
@@ -162,12 +185,21 @@ func _attempt_move(direction: Vector2i, duration: float) -> void:
 	grid_position = target_grid_pos
 	await _do_move(direction, duration)
 	
-	# (movement is already awaited via _do_move above)
+	# Pick up a key when landing on it.
+	if grid_manager.is_key(grid_position):
+		inventory.append("key")
+		grid_manager.set_cell(grid_position, CellType.Type.EMPTY)
+		item_collected.emit("key")
+		Dbg.p("Picked up key at %v" % grid_position)
 	
 	# Check if player landed on teleporter
 	if grid_manager.is_teleporter(grid_position):
 		await _handle_teleporter()
 	else:
+		if grid_manager.is_hazard(grid_position):
+			hit_hazard.emit()
+		elif grid_manager.is_goal(grid_position):
+			reached_goal.emit()
 		grid_manager.check_player_position(grid_position)
 
 func _do_move(direction: Vector2i, duration: float) -> void:
@@ -193,7 +225,7 @@ func _handle_teleporter():
 		
 		# Emit signal
 		teleported.emit(from_pos, target_pos)
-		grid_manager.teleported.emit(from_pos, target_pos)
+		grid_manager.emit_teleported(from_pos, target_pos)
 		
 		# Teleport player
 		grid_position = target_pos
@@ -201,6 +233,10 @@ func _handle_teleporter():
 		
 		# Check new position
 		await get_tree().create_timer(0.1).timeout
+		if grid_manager.is_hazard(grid_position):
+			hit_hazard.emit()
+		elif grid_manager.is_goal(grid_position):
+			reached_goal.emit()
 		grid_manager.check_player_position(grid_position)
 
 # New sensor functions for cell types
