@@ -55,18 +55,11 @@ func _ready():
 	# Connect cell type buttons
 	$HSplitContainer/ToolPanel/VBoxContainer/EmptyButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.EMPTY))
 	$HSplitContainer/ToolPanel/VBoxContainer/WallButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.WALL))
-	$HSplitContainer/ToolPanel/VBoxContainer/HazardButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.HAZARD))
 	$HSplitContainer/ToolPanel/VBoxContainer/GoalButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.GOAL))
 	$HSplitContainer/ToolPanel/VBoxContainer/StartButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.START))
 	$HSplitContainer/ToolPanel/VBoxContainer/TeleporterButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.TELEPORTER))
-	$HSplitContainer/ToolPanel/VBoxContainer/WaterButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.WATER))
-	$HSplitContainer/ToolPanel/VBoxContainer/LavaButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.LAVA))
-	$HSplitContainer/ToolPanel/VBoxContainer/IceButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.ICE))
-	$HSplitContainer/ToolPanel/VBoxContainer/SwitchButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.SWITCH))
 	$HSplitContainer/ToolPanel/VBoxContainer/DoorButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.DOOR))
 	$HSplitContainer/ToolPanel/VBoxContainer/KeyButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.KEY))
-	$HSplitContainer/ToolPanel/VBoxContainer/CoinButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.COIN))
-	$HSplitContainer/ToolPanel/VBoxContainer/GemButton.pressed.connect(_on_cell_type_selected.bind(CellType.Type.GEM))
 
 	# Connect action buttons
 	$HSplitContainer/ToolPanel/VBoxContainer/ResizeButton.pressed.connect(_on_resize_pressed)
@@ -157,18 +150,12 @@ func _apply_theme() -> void:
 	var cell_btns := {
 		"EmptyButton":      Color(0.32, 0.38, 0.48, 1),
 		"WallButton":       Color(0.42, 0.46, 0.58, 1),
-		"HazardButton":     Color(0.82, 0.22, 0.22, 1),
 		"GoalButton":       Color(0.22, 0.74, 0.36, 1),
 		"StartButton":      Color(0.90, 0.70, 0.15, 1),
 		"TeleporterButton": Color(0.62, 0.22, 0.88, 1),
-		"WaterButton":      Color(0.22, 0.52, 0.90, 1),
 		"LavaButton":       Color(0.90, 0.40, 0.12, 1),
-		"IceButton":        Color(0.62, 0.88, 0.96, 1),
-		"SwitchButton":     Color(0.78, 0.90, 0.22, 1),
 		"DoorButton":       Color(0.65, 0.38, 0.14, 1),
 		"KeyButton":        Color(0.92, 0.76, 0.20, 1),
-		"CoinButton":       Color(0.96, 0.82, 0.22, 1),
-		"GemButton":        Color(0.22, 0.88, 0.86, 1),
 	}
 	for btn_name in cell_btns:
 		var btn := get_node("HSplitContainer/ToolPanel/VBoxContainer/" + btn_name) as Button
