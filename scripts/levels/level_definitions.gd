@@ -122,81 +122,8 @@ Syntax reminder:
       commands here
   }"""
 	},
-	
 	# ──────────────────────────────────────────────────────────────────────
-	# Level 3 — While Loops + Sensors
-	# Concept : while(frontIsClear()) { move() } — walk until the wall
-	#           stops you, without counting steps in advance.
-	# Grid    : Four-segment snake. Each segment is a different length
-	#           (3, 4, 3, 3) so counting and using for loops is awkward.
-	# Solution: while(frontIsClear()){move()} + turn — repeated 4 times.
-	# ──────────────────────────────────────────────────────────────────────
-	{
-		"level_id": 3,
-		"level_name": "Blind Alleys",
-		"level_description": "Learn while loops + sensors: walk until a wall stops you, with no counting.",
-		"difficulty": 1,
-		"layout": """##########
-##########
-#####...G#
-#####.####
-#####.####
-#.....####
-#.########
-#.########
-#S########
-##########""",
-		"starter_code": """# Each corridor segment is a different length.
-# Instead of counting steps, use a sensor:
-#
-#   while (frontIsClear()) {
-#       move()
-#   }
-#
-# The bug will walk until it hits a wall, then stop.
-# Add a turn, then another while loop for the next segment.
-while (frontIsClear()) {
-    move()
-}
-turnRight()
-""",
-		"solution_code": """while (frontIsClear()) { move() }
-turnRight()
-while (frontIsClear()) { move() }
-turnLeft()
-while (frontIsClear()) { move() }
-turnRight()
-while (frontIsClear()) { move() }
-""",
-		"hint_text": """Level 3 — While Loops + Sensors
-
-A while loop repeats while its condition is true:
-
-  while (frontIsClear()) {
-      move()
-  }
-
-The bug walks forward until a wall blocks
-the way — no counting needed!
-
-This path has FOUR segments of different
-lengths. Use one while loop per segment:
-
-  while(frontIsClear()) { move() }
-  turnRight()
-  while(frontIsClear()) { move() }
-  turnLeft()
-  while(frontIsClear()) { move() }
-  turnRight()
-  while(frontIsClear()) { move() }
-
-frontIsClear() — true if the next cell is open
-leftIsClear()  — true if the cell to your left is open
-rightIsClear() — true if the cell to your right is open"""
-	},
-	
-	# ──────────────────────────────────────────────────────────────────────
-	# Level 4 — If / Else
+	# Level 3 — If / Else
 	# Concept : Check a condition and branch: do A if true, B if false.
 	# Grid    : Two T-junctions. Junction 1 → turn right.
 	#                            Junction 2 → turn left.
@@ -206,10 +133,10 @@ rightIsClear() — true if the cell to your right is open"""
 	#           → while+move → same if/else → while+move → goal
 	# ──────────────────────────────────────────────────────────────────────
 	{
-		"level_id": 4,
+		"level_id": 3,
 		"level_name": "Fork in the Road",
 		"level_description": "Learn if / else: choose which way to turn based on what a sensor sees.",
-		"difficulty": 2,
+		"difficulty": 1,
 		"layout": """##########
 ######G###
 ######.###
@@ -245,7 +172,7 @@ while (frontIsClear()) { move() }
 if (rightIsClear()) { turnRight() } else { turnLeft() }
 while (frontIsClear()) { move() }
 """,
-		"hint_text": """Level 4 — If / Else
+		"hint_text": """Level 3 — If / Else
 
 An if/else runs one block OR the other,
 never both:
@@ -269,7 +196,78 @@ Sensors return true or false:
   leftIsClear()  → true if left is open
   frontIsClear() → true if ahead is open"""
 	},
-	
+
+	# ──────────────────────────────────────────────────────────────────────
+	# Level 4 — While Loops + Sensors
+	# Concept : while(frontIsClear()) { move() } — walk until the wall
+	#           stops you, without counting steps in advance.
+	# Grid    : Four-segment snake. Each segment is a different length
+	#           (3, 4, 3, 3) so counting and using for loops is awkward.
+	# Solution: while(frontIsClear()){move()} + turn — repeated 4 times.
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 4,
+		"level_name": "Blind Alleys",
+		"level_description": "Learn while loops + sensors: walk until a wall stops you, with no counting.",
+		"difficulty": 1,
+		"layout": """##########
+##########
+#####...G#
+#####.####
+#####.####
+#.....####
+#.########
+#.########
+#S########
+##########""",
+		"starter_code": """# Each corridor segment is a different length.
+# Instead of counting steps, use a sensor:
+#
+#   while (frontIsClear()) {
+#       move()
+#   }
+#
+# The bug will walk until it hits a wall, then stop.
+# Add a turn, then another while loop for the next segment.
+while (frontIsClear()) {
+    move()
+}
+turnRight()
+""",
+		"solution_code": """while (frontIsClear()) { move() }
+turnRight()
+while (frontIsClear()) { move() }
+turnLeft()
+while (frontIsClear()) { move() }
+turnRight()
+while (frontIsClear()) { move() }
+""",
+		"hint_text": """Level 4 — While Loops + Sensors
+
+A while loop repeats while its condition is true:
+
+  while (frontIsClear()) {
+      move()
+  }
+
+The bug walks forward until a wall blocks
+the way — no counting needed!
+
+This path has FOUR segments of different
+lengths. Use one while loop per segment:
+
+  while(frontIsClear()) { move() }
+  turnRight()
+  while(frontIsClear()) { move() }
+  turnLeft()
+  while(frontIsClear()) { move() }
+  turnRight()
+  while(frontIsClear()) { move() }
+
+frontIsClear() — true if the next cell is open
+leftIsClear()  — true if the cell to your left is open
+rightIsClear() — true if the cell to your right is open"""
+	},	
 	# ──────────────────────────────────────────────────────────────────────
 	# Level 5 — Functions (DRY principle)
 	# Concept : Define a reusable function and call it instead of
@@ -284,7 +282,7 @@ Sensors return true or false:
 		"level_id": 5,
 		"level_name": "Staircase",
 		"level_description": "Learn functions: name a block of code once, then reuse it (Don't Repeat Yourself).",
-		"difficulty": 2,
+		"difficulty": 1,
 		"layout": """##########
 ####G#####
 ###..#####
@@ -354,145 +352,9 @@ brings you to the goal.
 Without a function: 16 lines.
 With a function: 9 lines."""
 	},
-	
-	# ──────────────────────────────────────────────────────────────────────
-	# Level 6 — Corridor Follower ("Snake Path")
-	# Concept : Combine while + if/else + the goalReached() sensor to follow
-	#           a single winding corridor: walk straight until a wall stops
-	#           you, then turn toward whichever side is open. Repeat until
-	#           you reach the goal. A gentle first taste of "code that reads
-	#           the maze" before the full right-hand rule at Level 10.
-	# Grid    : Single-path snakes (no branches), different shapes per variant.
-	# Solution: while (not goalReached()) {
-	#             while (frontIsClear()) { move() }
-	#             if (rightIsClear()) { turnRight() } else { turnLeft() }
-	#           }
-	# ──────────────────────────────────────────────────────────────────────
-	{
-		"level_id": 6,
-		"level_name": "Snake Path",
-		"level_description": "Combine while, if/else and goalReached(): follow a winding corridor until you reach the goal.",
-		"difficulty": 2,
-		"layout": """##########
-#....G####
-####.#####
-####.#####
-#....#####
-#.########
-#.########
-#.########
-#S########
-##########""",
-		"variants": [
-			"""##########
-#....G####
-####.#####
-####.#####
-#....#####
-#.########
-#.########
-#.########
-#S########
-##########""",
-			"""##########
-######G###
-######.###
-######.###
-#......###
-#.########
-#.########
-#.########
-#S########
-##########""",
-			"""##########
-####G#####
-####.#####
-####.#####
-####.#####
-#....#####
-#.########
-#.########
-#S########
-##########"""
-		],
-		"starter_code": """# This is a single winding corridor — a "snake".
-# You don't know how long each straight part is,
-# so COUNT nothing: just let the bug READ the maze.
-#
-# The plan, repeated until you reach the goal:
-#   1. Walk straight until a wall blocks you.
-#   2. Turn toward whichever side is open.
-#
-#   while (not goalReached()) {
-#       while (frontIsClear()) {
-#           move()
-#       }
-#       if (rightIsClear()) {
-#           turnRight()
-#       } else {
-#           turnLeft()
-#       }
-#   }
-#
-# goalReached() — true once the bug stands on the goal (G).
-while (not goalReached()) {
-    while (frontIsClear()) {
-        move()
-    }
-    if (rightIsClear()) {
-        turnRight()
-    } else {
-        turnLeft()
-    }
-}
-""",
-		"solution_code": """while (not goalReached()) {
-    while (frontIsClear()) {
-        move()
-    }
-    if (rightIsClear()) {
-        turnRight()
-    } else {
-        turnLeft()
-    }
-}
-""",
-		"hint_text": """Level 6 — Snake Path
-
-This corridor twists and turns, and each
-straight part is a different length. Counting
-steps would be a nightmare — so don't!
-
-Instead, write code that FOLLOWS the corridor:
-
-  while (not goalReached()) {
-      while (frontIsClear()) {   <- walk straight
-          move()
-      }
-      if (rightIsClear()) {      <- corner: turn
-          turnRight()            <- toward the open side
-      } else {
-          turnLeft()
-      }
-  }
-
-How it works:
-  • The inner while walks forward until a wall.
-  • At a corner exactly one side is open, so the
-    if/else picks the correct turn.
-  • The outer while keeps going until goalReached().
-
-New sensor:
-  goalReached() — true when the bug is on the goal.
-
-Because the code reads the maze as it goes, the
-SAME program solves every snake, no matter its
-shape. This is your first "smart" solver —
-Level 10 will make it even more powerful!"""
-	},
 
 	# ──────────────────────────────────────────────────────────────────────
-	# Level 7 — Variables ("Measure & Mirror")
+	# Level 6 — Variables ("Measure & Mirror")
 	# Concept : Store a measured value in a variable, then reuse it.
 	# Grid    : Symmetric L — walk UP an unknown distance, then turn and
 	#           walk the SAME distance EAST to the goal.
@@ -504,10 +366,10 @@ Level 10 will make it even more powerful!"""
 	#           for (i in range(n)) { move() }
 	# ──────────────────────────────────────────────────────────────────────
 	{
-		"level_id": 7,
+		"level_id": 6,
 		"level_name": "Measure & Mirror",
 		"level_description": "Learn variables: count the steps you take, store the number, then reuse it.",
-		"difficulty": 3,
+		"difficulty": 2,
 		"layout": """##########
 ##########
 ##########
@@ -579,7 +441,7 @@ for (i in range(n)) {
     move()
 }
 """,
-		"hint_text": """Level 7 — Variables
+		"hint_text": """Level 6 — Variables
 
 A variable stores a value you can read back
 later. Create one by assigning to it:
@@ -607,6 +469,142 @@ so you can mirror the distance. Try a fixed
 number instead and it will fail on another
 variation — that's why variables matter!"""
 	},
+		
+	# ──────────────────────────────────────────────────────────────────────
+	# Level 7 — Corridor Follower ("Snake Path")
+	# Concept : Combine while + if/else + the goalReached() sensor to follow
+	#           a single winding corridor: walk straight until a wall stops
+	#           you, then turn toward whichever side is open. Repeat until
+	#           you reach the goal. A gentle first taste of "code that reads
+	#           the maze" before the full right-hand rule at Level 10.
+	# Grid    : Single-path snakes (no branches), different shapes per variant.
+	# Solution: while (not goalReached()) {
+	#             while (frontIsClear()) { move() }
+	#             if (rightIsClear()) { turnRight() } else { turnLeft() }
+	#           }
+	# ──────────────────────────────────────────────────────────────────────
+	{
+		"level_id": 7,
+		"level_name": "Snake Path",
+		"level_description": "Combine while, if/else and goalReached(): follow a winding corridor until you reach the goal.",
+		"difficulty": 2,
+		"layout": """##########
+####G#####
+####.#####
+####.#####
+#....#####
+#.########
+#.########
+#.########
+#S########
+##########""",
+		"variants": [
+			"""##########
+####G#####
+####.#####
+####.#####
+#....#####
+#.########
+#.########
+#.########
+#S########
+##########""",
+			"""##########
+######G###
+######.###
+######.###
+#......###
+#.########
+#.########
+#.########
+#S########
+##########""",
+			"""##########
+####G#####
+####.#####
+####.#####
+####.#####
+#....#####
+#.########
+#.########
+#S########
+##########"""
+		],
+		"starter_code": """# This is a single winding corridor — a "snake".
+# You don't know how long each straight part is,
+# so COUNT nothing: just let the bug READ the maze.
+#
+# The plan, repeated until you reach the goal:
+#   1. Walk straight until a wall blocks you.
+#   2. Turn toward whichever side is open.
+#
+#   while (not goalReached()) {
+#       while (frontIsClear()) {
+#           move()
+#       }
+#       if (rightIsClear()) {
+#           turnRight()
+#       } else {
+#           turnLeft()
+#       }
+#   }
+#
+# goalReached() — true once the bug stands on the goal (G).
+while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"solution_code": """while (not goalReached()) {
+    while (frontIsClear()) {
+        move()
+    }
+    if (rightIsClear()) {
+        turnRight()
+    } else {
+        turnLeft()
+    }
+}
+""",
+		"hint_text": """Level 7 — Snake Path
+
+This corridor twists and turns, and each
+straight part is a different length. Counting
+steps would be a nightmare — so don't!
+
+Instead, write code that FOLLOWS the corridor:
+
+  while (not goalReached()) {
+      while (frontIsClear()) {   <- walk straight
+          move()
+      }
+      if (rightIsClear()) {      <- corner: turn
+          turnRight()            <- toward the open side
+      } else {
+          turnLeft()
+      }
+  }
+
+How it works:
+  • The inner while walks forward until a wall.
+  • At a corner exactly one side is open, so the
+    if/else picks the correct turn.
+  • The outer while keeps going until goalReached().
+
+New sensor:
+  goalReached() — true when the bug is on the goal.
+
+Because the code reads the maze as it goes, the
+SAME program solves every snake, no matter its
+shape. This is your first "smart" solver —
+Level 10 will make it even more powerful!"""
+	},
 
 	# ──────────────────────────────────────────────────────────────────────
 	# Level 8 — Functions with Parameters ("Bridge Builder")
@@ -621,7 +619,7 @@ variation — that's why variables matter!"""
 		"level_id": 8,
 		"level_name": "Bridge Builder",
 		"level_description": "Learn function parameters: write walk(n) once, then call it with any distance.",
-		"difficulty": 3,
+		"difficulty": 2,
 		"layout": """##########
 ##########
 ##########
@@ -748,7 +746,7 @@ value — no repeated loop code!"""
 		"level_id": 9,
 		"level_name": "The Comb",
 		"level_description": "Learn nested loops: a loop inside a loop sweeps each tooth of the comb.",
-		"difficulty": 3,
+		"difficulty": 2,
 		"layout": """##########
 ##########
 ##########
@@ -875,7 +873,7 @@ turnBack() spins you 180 degrees."""
 		"level_id": 10,
 		"level_name": "The Right Wall",
 		"level_description": "Learn boolean logic (not, and, or) and the right-hand rule that solves any maze.",
-		"difficulty": 4,
+		"difficulty": 2,
 		"layout": """##########
 #....#..G#
 #.##.#.###
