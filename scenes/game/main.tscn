@@ -1,8 +1,10 @@
-[gd_scene load_steps=16 format=3 uid="uid://155xx7s6y6ta"]
+[gd_scene load_steps=19 format=3 uid="uid://155xx7s6y6ta"]
 
 [ext_resource type="Script" uid="uid://tlnj0sij25sc" path="res://scripts/ui/main.gd" id="1_0wfyh"]
 [ext_resource type="PackedScene" uid="uid://be8qbmt0fe144" path="res://scenes/game/player.tscn" id="2_sugp2"]
-[ext_resource type="Texture2D" uid="uid://can2if4ugmpt3" path="res://assets/sprites/LediBugSprite.png" id="3_jyhfs"]
+[ext_resource type="Texture2D" path="res://assets/sprites/LediBug.png" id="3_lady0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/LediBug1.png" id="4_lady1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/LediBug2.png" id="5_lady2"]
 [ext_resource type="Script" uid="uid://du2qpsph7hee2" path="res://scripts/language/code_executor.gd" id="3_sugp2"]
 [ext_resource type="Script" uid="uid://brbtrsjudxy8n" path="res://scripts/levels/simple_grid.gd" id="6_grid"]
 
@@ -82,6 +84,26 @@ number_color = Color(0.98, 0.68, 0.32, 1)
 symbol_color = Color(0.82, 0.82, 0.85, 1)
 function_color = Color(0.28, 0.78, 0.98, 1)
 member_variable_color = Color(0.78, 0.92, 0.38, 1)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_ladybug"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_lady0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_lady1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_lady2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_lady1")
+}],
+"loop": true,
+"name": &"crawl",
+"speed": 8.0
+}]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_sugp2"]
 size = Vector2(62, 62)
@@ -254,10 +276,12 @@ z_index = 5
 position = Vector2(96, 96)
 rotation = -6.2831855
 
-[node name="Sprite" type="Sprite2D" parent="HSplitContainer/GamePanel/GridBackground/Level/Player"]
+[node name="Sprite" type="AnimatedSprite2D" parent="HSplitContainer/GamePanel/GridBackground/Level/Player"]
 position = Vector2(0, 0)
-scale = Vector2(0.15, 0.15)
-texture = ExtResource("3_jyhfs")
+scale = Vector2(2, 2)
+sprite_frames = SubResource("SpriteFrames_ladybug")
+animation = &"crawl"
+autoplay = "crawl"
 
 [node name="HSplitContainer_GamePanel_SubViewportContainer_SubViewport_Level_Player#CollisionShape2D" type="CollisionShape2D" parent="HSplitContainer/GamePanel/GridBackground/Level/Player"]
 visible = false

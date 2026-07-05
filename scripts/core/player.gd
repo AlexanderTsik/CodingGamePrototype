@@ -2,7 +2,7 @@ extends CharacterBody2D
 
 # Note: GridManager is auto-loaded via class_name
 
-const SPRITE_NATURAL_SIZE := 320.0  # texture px at scale 1.0
+const SPRITE_NATURAL_SIZE := 32.0  # uploaded ladybug frames are 32 px at scale 1.0
 
 var start_position: Vector2
 var grid_position: Vector2i
@@ -27,6 +27,13 @@ func _ready():
 	if grid_manager:
 		grid_position = Vector2i(position / grid_manager.tile_size)
 	_update_facing_rotation()
+	_play_sprite_animation()
+
+
+func _play_sprite_animation():
+	var animated_sprite := get_node_or_null("Sprite")
+	if animated_sprite is AnimatedSprite2D:
+		(animated_sprite as AnimatedSprite2D).play("crawl")
 
 func _process(_delta: float):
 	if grid_manager and grid_manager.tile_size != _last_tile_size:
@@ -44,6 +51,7 @@ func reset_position():
 	move_count = 0
 	inventory.clear()
 	_update_facing_rotation()
+	_play_sprite_animation()
 
 func _sync_sprite_and_position():
 	"""Called whenever tile_size changes — rescale sprite and snap position."""
@@ -69,6 +77,7 @@ func turnRight():
 	var new_y = current_direction.x
 	current_direction = Vector2i(new_x, new_y)
 	_update_facing_rotation()
+	_play_sprite_animation()
 	Dbg.p("Turned right, now facing: %v" % current_direction)
 
 func turnLeft():
@@ -79,12 +88,14 @@ func turnLeft():
 	var new_y = -current_direction.x
 	current_direction = Vector2i(new_x, new_y)
 	_update_facing_rotation()
+	_play_sprite_animation()
 	Dbg.p("Turned left, now facing: %v" % current_direction)
 
 func turnBack():
 	"""Turn 180 degrees around"""
 	current_direction = -current_direction
 	_update_facing_rotation()
+	_play_sprite_animation()
 	Dbg.p("Turned around, now facing: %v" % current_direction)
 
 func _update_facing_rotation():
@@ -239,16 +250,6 @@ func _handle_teleporter():
 			reached_goal.emit()
 		grid_manager.check_player_position(grid_position)
 
-# New sensor functions for cell types
-func is_on_water() -> bool:
-	if not grid_manager:
-		return false
-	return grid_manager.get_cell_at(grid_position) == CellType.Type.WATER
-
-func is_on_ice() -> bool:
-	if not grid_manager:
-		return false
-	return grid_manager.get_cell_at(grid_position) == CellType.Type.ICE
 
 func is_on_teleporter() -> bool:
 	if not grid_manager:

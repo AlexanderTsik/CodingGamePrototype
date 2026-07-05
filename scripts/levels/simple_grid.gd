@@ -67,9 +67,6 @@ func _draw_cells(cols: int, rows: int, cs: int):
 	for y in range(rows):
 		for x in range(cols):
 			var ct: CellType.Type = grid_manager.grid[y][x]
-			if ct == CellType.Type.EMPTY:
-				continue
-
 			var color := CellType.get_color(ct)
 			var ox := float(x * cs + CELL_PAD)
 			var oy := float(y * cs + CELL_PAD)
@@ -85,7 +82,7 @@ func _draw_cells(cols: int, rows: int, cs: int):
 				draw_rect(Rect2(Vector2(ox, oy),          Vector2(sw, 2)), color.lightened(0.45), true)
 				draw_rect(Rect2(Vector2(ox, oy + sh - 2), Vector2(sw, 2)), color.darkened(0.45),  true)
 
-				if ct != CellType.Type.START:
+				if ct != CellType.Type.START and ct != CellType.Type.EMPTY:
 					_decorate(ct, ox, oy, sw, sh, cs)
 
 func _bevel(ox: float, oy: float, sw: float, sh: float, color: Color):
@@ -106,7 +103,7 @@ func _decorate(ct: CellType.Type, ox: float, oy: float, sw: float, sh: float, cs
 			draw_circle(Vector2(cx, cy), r * 1.1, Color(1, 1, 1, 0.15))
 			draw_circle(Vector2(cx, cy), r * 0.6, Color(1, 1, 1, 0.45))
 
-		CellType.Type.HAZARD, CellType.Type.LAVA, CellType.Type.TRAP:
+		CellType.Type.LAVA:
 			var m := sw * 0.18
 			draw_line(Vector2(ox + m, oy + m), Vector2(ox + sw - m, oy + sh - m), Color(1, 0.2, 0.1, 0.75), lw * 1.3)
 			draw_line(Vector2(ox + sw - m, oy + m), Vector2(ox + m, oy + sh - m), Color(1, 0.2, 0.1, 0.75), lw * 1.3)
@@ -115,16 +112,6 @@ func _decorate(ct: CellType.Type, ox: float, oy: float, sw: float, sh: float, cs
 			draw_arc(Vector2(cx, cy), r,       0.0, TAU, 24, Color(1, 1, 1, 0.38), lw)
 			draw_arc(Vector2(cx, cy), r * 0.5, 0.0, TAU, 16, Color(1, 1, 1, 0.62), lw)
 			draw_circle(Vector2(cx, cy), r * 0.2, Color(1, 1, 1, 0.72))
-
-		CellType.Type.COIN:
-			draw_circle(Vector2(cx, cy), r * 0.9, Color(1, 0.9, 0.1, 0.30))
-			draw_arc(Vector2(cx, cy), r * 0.7, 0.0, TAU, 20, Color(1, 0.9, 0.1, 0.82), lw)
-
-		CellType.Type.GEM:
-			var pts := [Vector2(cx, cy - r), Vector2(cx + r, cy),
-						Vector2(cx, cy + r), Vector2(cx - r, cy), Vector2(cx, cy - r)]
-			for i in range(4):
-				draw_line(pts[i], pts[i + 1], Color(1, 1, 1, 0.62), lw)
 
 		CellType.Type.KEY:
 			draw_arc(Vector2(cx - r * 0.15, cy - r * 0.25), r * 0.38, 0.0, TAU, 16, Color(1, 1, 1, 0.72), lw)
@@ -136,25 +123,6 @@ func _decorate(ct: CellType.Type, ox: float, oy: float, sw: float, sh: float, cs
 			draw_rect(Rect2(ox + dm, oy + dm, sw - dm * 2.0, sh - dm * 1.4), Color(1, 1, 1, 0.30), false, lw)
 			draw_circle(Vector2(cx, cy - r * 0.1), r * 0.22, Color(1, 1, 1, 0.78))
 			draw_line(Vector2(cx, cy - r * 0.1), Vector2(cx, cy + r * 0.45), Color(1, 1, 1, 0.78), lw)
-
-		CellType.Type.ICE:
-			for a in [0.0, PI / 3.0, PI * 2.0 / 3.0]:
-				var dx := cos(a) * r;  var dy := sin(a) * r
-				draw_line(Vector2(cx - dx, cy - dy), Vector2(cx + dx, cy + dy), Color(1, 1, 1, 0.50), lw)
-
-		CellType.Type.WATER:
-			for i in range(2):
-				var yw := oy + sh * (0.35 + i * 0.28)
-				draw_arc(Vector2(cx - r * 0.3, yw),  r * 0.38, PI, 0.0, 8, Color(1, 1, 1, 0.38), lw)
-				draw_arc(Vector2(cx + r * 0.38, yw), r * 0.38, PI, 0.0, 8, Color(1, 1, 1, 0.38), lw)
-
-		CellType.Type.SWITCH:
-			draw_arc(Vector2(cx, cy), r * 0.82, 0.0, TAU, 20, Color(1, 1, 1, 0.35), lw)
-			draw_circle(Vector2(cx, cy), r * 0.42, Color(1, 1, 1, 0.65))
-
-		CellType.Type.CHECKPOINT:
-			draw_line(Vector2(cx - r * 0.5, cy),          Vector2(cx - r * 0.1, cy + r * 0.5), Color(1, 1, 1, 0.80), lw)
-			draw_line(Vector2(cx - r * 0.1, cy + r * 0.5), Vector2(cx + r * 0.6, cy - r * 0.4), Color(1, 1, 1, 0.80), lw)
 
 func _draw_grid_lines(cols: int, rows: int, cs: int):
 	var lc := Color(0.18, 0.20, 0.26, 0.65)

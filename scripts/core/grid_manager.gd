@@ -142,7 +142,7 @@ func is_walkable(grid_pos: Vector2i) -> bool:
 func is_hazard(grid_pos: Vector2i) -> bool:
 	"""Check if this cell is a hazard"""
 	var cell = get_cell_at(grid_pos)
-	return cell == CellType.Type.HAZARD or cell == CellType.Type.LAVA
+	return cell == CellType.Type.LAVA
 
 func is_door(grid_pos: Vector2i) -> bool:
 	"""Check if this cell is a (closed) door"""
@@ -317,13 +317,3 @@ func check_player_position(grid_pos: Vector2i):
 		cell_activated.emit(grid_pos, cell_type)
 		Dbg.p("GridManager: Player entered teleporter at %v" % grid_pos)
 	
-	# Check for collectibles
-	elif cell_type == CellType.Type.KEY or cell_type == CellType.Type.COIN or cell_type == CellType.Type.GEM:
-		item_collected.emit(cell_type, grid_pos)
-		var type_name = CellType.Type.keys()[cell_type]
-		Dbg.p("GridManager: Player collected %s at %v" % [type_name, grid_pos])
-	
-	# Check for switches
-	elif cell_type == CellType.Type.SWITCH:
-		cell_activated.emit(grid_pos, cell_type)
-		Dbg.p("GridManager: Player activated switch at %v" % grid_pos)

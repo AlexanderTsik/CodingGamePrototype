@@ -749,9 +749,7 @@ func _explain_hazards_if_needed() -> void:
 	for y in range(grid_manager.grid_height):
 		for x in range(grid_manager.grid_width):
 			var ct: int = grid_manager.grid[y][x]
-			if ct == CellType.Type.HAZARD and hazard_cell.x < 0:
-				hazard_cell = Vector2i(x, y)
-			elif ct == CellType.Type.LAVA and lava_cell.x < 0:
+			if ct == CellType.Type.LAVA and lava_cell.x < 0:
 				lava_cell = Vector2i(x, y)
 
 	# Show only ONE explanation per level load (hazard takes priority).
