@@ -49,6 +49,7 @@ func _build() -> void:
 	_panel.offset_bottom   = 240.0
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical   = Control.GROW_DIRECTION_BOTH
+	_panel.z_index = 10
 	_main.add_child(_panel)
 
 	var margin = MarginContainer.new()
