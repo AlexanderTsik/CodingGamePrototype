@@ -245,6 +245,6 @@ func _add_lb_row(rank: String, uname: String, moves: String, code_len: String,
 			lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		elif is_me:
 			lbl.add_theme_color_override("font_color", Color(0.4, 1.0, 0.4))
-		_lb_container.add_child(lbl)
+		row.add_child(lbl)
 
 	_lb_container.add_child(row)
