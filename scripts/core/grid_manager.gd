@@ -165,8 +165,9 @@ func is_goal(grid_pos: Vector2i) -> bool:
 	return get_cell_at(grid_pos) == CellType.Type.GOAL
 
 static func is_layout_solvable(layout: String) -> bool:
-	"""BFS from the Start cell to any Goal. Walls block movement; hazards and
-	teleporters are treated as passable (a conservative reachability check).
+	"""BFS from the Start cell to any Goal. Walls block movement; hazards are
+	passable. Teleporters warp to their paired partner, so a valid path may run
+	Start -> portal -> partner -> Goal even when walls block the direct route.
 
 	Keys and doors are modelled faithfully: walking onto a KEY collects it, and a
 	DOOR can only be crossed by spending a previously-collected key (which opens
@@ -185,6 +186,7 @@ static func is_layout_solvable(layout: String) -> bool:
 	var goals := {}
 	var key_index := {}      # Vector2i -> bit index
 	var door_index := {}     # Vector2i -> bit index
+	var teleporters: Array[Vector2i] = []   # row-major order, paired 0&1, 2&3, ...
 	for y in range(rows.size()):
 		var line: String = rows[y]
 		for x in range(line.length()):
@@ -194,8 +196,16 @@ static func is_layout_solvable(layout: String) -> bool:
 				CellType.Type.GOAL:  goals[p] = true
 				CellType.Type.KEY:   key_index[p] = key_index.size()
 				CellType.Type.DOOR:  door_index[p] = door_index.size()
+				CellType.Type.TELEPORTER: teleporters.append(p)
 	if start == Vector2i(-1, -1) or goals.is_empty():
 		return false
+
+	# Pair teleporters the same way the live grid does (first with second, etc.)
+	# so stepping onto one warps to its partner.
+	var teleporter_target := {}
+	for i in range(0, teleporters.size() - 1, 2):
+		teleporter_target[teleporters[i]] = teleporters[i + 1]
+		teleporter_target[teleporters[i + 1]] = teleporters[i]
 
 	# BFS over state = (pos, collected-keys bitmask, opened-doors bitmask).
 	var visited := {"%d,%d,0,0" % [start.x, start.y]: true}
@@ -234,6 +244,14 @@ static func is_layout_solvable(layout: String) -> bool:
 				continue
 			visited[skey] = true
 			queue.append([nx, nkeys, ndoors])
+
+		# Standing on a teleporter warps you to its partner (keys/doors preserved).
+		if teleporter_target.has(cur):
+			var tp: Vector2i = teleporter_target[cur]
+			var tkey := "%d,%d,%d,%d" % [tp.x, tp.y, keys_mask, doors_mask]
+			if not visited.has(tkey):
+				visited[tkey] = true
+				queue.append([tp, keys_mask, doors_mask])
 	return false
 
 static func _popcount(n: int) -> int:

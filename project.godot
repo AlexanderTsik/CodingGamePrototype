@@ -23,6 +23,7 @@ config/icon="res://assets/icons/icon.svg"
 
 AuthManager="*res://scripts/network/auth_manager.gd"
 ApiClient="*res://scripts/network/api_client.gd"
+AuthBridge="*res://scripts/network/auth_bridge.gd"
 Dbg="*res://scripts/core/debug_log.gd"
 
 [display]

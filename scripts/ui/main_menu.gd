@@ -25,6 +25,10 @@ func _ready():
 	$CenterContainer/Card/CardMargin/MenuBox/QuitButton.pressed.connect(_on_quit_pressed)
 	$HowToPlayPopup/MarginContainer/VBoxContainer/CloseButton.pressed.connect(_on_close_popup_pressed)
 
+	# In the browser build (tab / iframe) quitting does nothing, so hide the button.
+	if OS.get_name() == "Web":
+		$CenterContainer/Card/CardMargin/MenuBox/QuitButton.visible = false
+
 	account_button.pressed.connect(_on_account_pressed)
 	logout_button.pressed.connect(_on_logout_pressed)
 

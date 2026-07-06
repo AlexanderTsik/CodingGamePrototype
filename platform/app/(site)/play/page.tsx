@@ -1,15 +1,88 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase";
 
 export default function PlayPage() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  // Single-sign-on bridge with the game iframe. The platform stores its session
+  // in cookies and the game in its own localStorage, so they can't see each
+  // other — we reconcile them over postMessage (see scripts/network/auth_bridge.gd).
+  useEffect(() => {
+    const supabase = createClient();
+
+    // Push the platform's current session down into the game.
+    async function pushSession(target: Window) {
+      const { data: { session } } = await supabase.auth.getSession();
+      let payload: Record<string, string>;
+      if (session) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", session.user.id)
+          .single();
+        payload = {
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          user_id: session.user.id,
+          username: prof?.username ?? session.user.email ?? "",
+        };
+      } else {
+        payload = { event: "logout" };
+      }
+      target.postMessage({ type: "ledibug:auth", payload }, window.location.origin);
+    }
+
+    // Mirror a game-side login/logout back into the platform's Supabase session.
+    let syncing = false;
+    async function applyFromGame(payload: Record<string, string>) {
+      syncing = true;
+      try {
+        if (payload.event === "logout" || !payload.access_token) {
+          await supabase.auth.signOut();
+        } else {
+          await supabase.auth.setSession({
+            access_token: payload.access_token,
+            refresh_token: payload.refresh_token,
+          });
+        }
+      } finally {
+        syncing = false;
+      }
+    }
+
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return; // same-origin game only
+      const d = e.data;
+      if (!d || typeof d !== "object") return;
+      if (d.type === "ledibug:ready") {
+        if (iframeRef.current?.contentWindow) pushSession(iframeRef.current.contentWindow);
+      } else if (d.type === "ledibug:auth") {
+        applyFromGame(d.payload ?? {});
+      }
+    }
+    window.addEventListener("message", onMessage);
+
+    // Re-push whenever the platform's auth changes (login, logout, token refresh),
+    // unless that change was one we just applied from the game.
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      if (syncing) return;
+      if (iframeRef.current?.contentWindow) pushSession(iframeRef.current.contentWindow);
+    });
+
+    return () => {
+      window.removeEventListener("message", onMessage);
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const toggleFullscreen = () => {
@@ -54,6 +127,7 @@ export default function PlayPage() {
       {/* Game container */}
       <div ref={containerRef} className="flex-1 relative bg-black">
         <iframe
+          ref={iframeRef}
           src="/game/CodingGamePrototype.html"
           className="w-full h-full border-0"
           allow="autoplay; fullscreen"

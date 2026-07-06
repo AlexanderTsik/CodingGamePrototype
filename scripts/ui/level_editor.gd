@@ -101,9 +101,13 @@ func _ready():
 	# Apply visual theme
 	_apply_theme()
 
-	# Check if editing an existing level
+	# Restore from a test session, or open an existing level for editing.
 	await get_tree().process_frame
-	if get_tree().root.has_meta("edit_level_path"):
+	if get_tree().root.has_meta("restore_editor_level"):
+		var lvl = get_tree().root.get_meta("restore_editor_level")
+		get_tree().root.remove_meta("restore_editor_level")
+		_restore_from_test(lvl)
+	elif get_tree().root.has_meta("edit_level_path"):
 		var file_path = get_tree().root.get_meta("edit_level_path")
 		get_tree().root.remove_meta("edit_level_path")
 		_load_level_from_path(file_path)
@@ -386,6 +390,15 @@ func _load_level_data(level_data: Dictionary):
 	_string_to_grid(level_data.get("layout", ""))
 	_update_grid_manager()
 
+func _restore_from_test(lvl: Dictionary) -> void:
+	"""Rebuild the editor exactly as it was when the user pressed Test."""
+	current_level_name = lvl.get("editor_name", "")
+	current_level_file = lvl.get("editor_file", "")
+	_string_to_grid(lvl.get("layout", ""))
+	_update_grid_manager()
+	hint_input.text = lvl.get("hint_text", "")
+	starter_code_input.text = lvl.get("starter_code", "")
+
 # ─── Layout string serialisation ──────────────────────────────────────────────
 
 func _grid_to_string() -> String:
@@ -425,7 +438,10 @@ func _on_test_pressed():
 		"level_name":  "Test: " + (current_level_name if current_level_name != "" else "Untitled"),
 		"layout":      _grid_to_string(),
 		"starter_code": starter_code_input.text,
-		"hint_text":   hint_input.text
+		"hint_text":   hint_input.text,
+		"level_source": "test",           # lets the game offer a "Back to Editor" button
+		"editor_name":  current_level_name,
+		"editor_file":  current_level_file,
 	}
 	get_tree().root.set_meta("test_level", test_level)
 	get_tree().change_scene_to_file("res://scenes/game/main.tscn")

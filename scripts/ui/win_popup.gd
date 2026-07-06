@@ -102,6 +102,15 @@ func _build() -> void:
 	btn_row.add_theme_constant_override("separation", 12)
 	vbox.add_child(btn_row)
 
+	var menu_btn = Button.new()
+	menu_btn.text = "Main Menu"
+	menu_btn.custom_minimum_size = Vector2(110, 36)
+	menu_btn.pressed.connect(func():
+		_panel.visible = false
+		_main._on_menu_button_pressed()
+	)
+	btn_row.add_child(menu_btn)
+
 	var retry_btn = Button.new()
 	retry_btn.text = "Play Again"
 	retry_btn.custom_minimum_size = Vector2(110, 36)
@@ -133,12 +142,12 @@ func _get_leaderboard_key() -> String:
 	return ""  # local — no shared leaderboard
 
 func show_result() -> void:
-	var moves       = _main.player.move_count
-	var code        = _main.code_input.text
-	var code_length = code.replace(" ", "").replace("\n", "").replace("\t", "").length()
-	var level_id    = _get_leaderboard_key()
+	var moves    = _main.player.move_count
+	var code     = _main.code_input.text
+	var lines    = _count_lines(code)
+	var level_id = _get_leaderboard_key()
 
-	_stats.text      = "%d moves  ·  %d chars of code" % [moves, code_length]
+	_stats.text      = "%d moves  ·  %d lines of code" % [moves, lines]
 	_rank_label.text = ""
 	_panel.visible   = true
 
@@ -156,7 +165,7 @@ func show_result() -> void:
 
 	# Submit first (if logged in), then fetch so the player's entry is in the DB.
 	if AuthManager.is_logged_in():
-		var sub_result = await ApiClient.submit_solution(level_id, code, moves, code_length)
+		var sub_result = await ApiClient.submit_solution(level_id, code, moves, lines)
 		if sub_result.has("error"):
 			_rank_label.text = "Submit failed: %s" % sub_result.get("msg", sub_result["error"])
 			_rank_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
@@ -172,7 +181,7 @@ func show_result() -> void:
 		_set_lb_status("No solutions yet — you're first!")
 		return
 
-	_add_lb_row("#", "Player", "Moves", "Code", true, false)
+	_add_lb_row("#", "Player", "Moves", "Lines", true, false)
 
 	var my_username = AuthManager.get_username() if AuthManager.is_logged_in() else ""
 	var my_rank     = -1
@@ -185,8 +194,8 @@ func show_result() -> void:
 		if is_me:
 			my_rank = i + 1
 		_add_lb_row(str(i + 1), uname,
-				str(e.get("move_count", "?")),
-				str(e.get("code_length", "?")),
+				str(int(e.get("move_count", 0))),
+				str(int(e.get("code_length", 0))),
 				false, is_me)
 
 	if my_rank > 0:
@@ -195,6 +204,14 @@ func show_result() -> void:
 	elif AuthManager.is_logged_in():
 		_rank_label.text = "Solution submitted!"
 		_rank_label.add_theme_color_override("font_color", Color(0.5, 0.8, 0.5))
+
+func _count_lines(code: String) -> int:
+	"""Count non-blank lines of code (the leaderboard tiebreak metric)."""
+	var n := 0
+	for line in code.split("\n"):
+		if line.strip_edges() != "":
+			n += 1
+	return n
 
 func _set_lb_status(msg: String) -> void:
 	_clear_lb()

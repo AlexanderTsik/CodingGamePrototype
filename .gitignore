@@ -9,7 +9,7 @@
 .godot/
 .import/
 *.import
-
+.claude
 # Godot-specific binaries and executables
 *.translation
 *.import

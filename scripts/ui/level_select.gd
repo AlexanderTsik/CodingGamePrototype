@@ -73,6 +73,8 @@ func _create_level_buttons() -> void:
 		var level_def : Dictionary = level_definitions.get_level(level_id)
 		var difficulty : int = level_def.get("difficulty", 1)
 		var variant_count: int = level_definitions.get_level_variant_count(level_id)
+		var unlocked := PlayerProgress.is_unlocked(level_id)
+		var solved := PlayerProgress.is_solved(level_id)
 
 		# ── Card shell ──────────────────────────────────────────────────────
 		var card := PanelContainer.new()
@@ -93,7 +95,7 @@ func _create_level_buttons() -> void:
 
 		# Level number — small / muted
 		var num_lbl := Label.new()
-		num_lbl.text = "Level %d" % level_id
+		num_lbl.text = ("Level %d  ✓" % level_id) if solved else ("Level %d" % level_id)
 		num_lbl.add_theme_font_size_override("font_size", 11)
 		num_lbl.add_theme_color_override("font_color", Color(0.42, 0.50, 0.60, 1))
 
@@ -136,14 +138,19 @@ func _create_level_buttons() -> void:
 		var spacer := Control.new()
 		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
-		# Play button
+		# Play button — locked until the previous level is solved.
 		var play_btn := Button.new()
-		play_btn.text = "Play"
 		play_btn.add_theme_font_size_override("font_size", 14)
 		play_btn.add_theme_stylebox_override("normal",  _s_btn_play)
 		play_btn.add_theme_stylebox_override("hover",   _s_btn_play_hv)
 		play_btn.add_theme_stylebox_override("pressed", _s_btn_play_hv)
-		play_btn.pressed.connect(_on_level_pressed.bind(level_id))
+		if unlocked:
+			play_btn.text = "Replay" if solved else "Play"
+			play_btn.pressed.connect(_on_level_pressed.bind(level_id))
+		else:
+			play_btn.text = "🔒 Locked"
+			play_btn.disabled = true
+			card.modulate = Color(1, 1, 1, 0.45)   # dim locked cards
 
 		vbox.add_child(num_lbl)
 		vbox.add_child(name_lbl)

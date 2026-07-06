@@ -21,11 +21,11 @@ func run() -> void:
 	assert_true(gm.is_goal(Vector2i(2, 1)), "goal detected")
 	gm.free()
 
-	section("hazards are walkable but flagged deadly")
+	section("lava is walkable but flagged deadly")
 	var gm2 = GridManager.new()
-	gm2.load_level_from_string("###\n#X#\n###")
-	assert_true(gm2.is_walkable(Vector2i(1, 1)), "hazard is walkable")
-	assert_true(gm2.is_hazard(Vector2i(1, 1)), "hazard is flagged")
+	gm2.load_level_from_string("###\n#L#\n###")
+	assert_true(gm2.is_walkable(Vector2i(1, 1)), "lava is walkable")
+	assert_true(gm2.is_hazard(Vector2i(1, 1)), "lava is flagged deadly")
 	gm2.free()
 
 	section("teleporters pair up")
@@ -40,6 +40,8 @@ func run() -> void:
 	assert_false(GridManager.is_layout_solvable("#####\n#S#G#\n#####"), "wall between S and G is unsolvable")
 	assert_false(GridManager.is_layout_solvable("####\n#S.#\n####"), "no goal -> not solvable")
 	assert_false(GridManager.is_layout_solvable("######\n#S#.G#\n######"), "goal walled off -> unsolvable")
+	assert_true(GridManager.is_layout_solvable("#####\n#S#G#\n#T#T#\n#####"), "reachable only via a teleporter pair")
+	assert_false(GridManager.is_layout_solvable("#####\n#S#G#\n#T#.#\n#####"), "unpaired teleporter doesn't connect S and G")
 
 	section("grid<->world coordinate round-trip")
 	var gm4 = GridManager.new()

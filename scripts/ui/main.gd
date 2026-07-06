@@ -56,6 +56,9 @@ var debug_button: Button
 var is_dark_mode: bool = true
 var theme_toggle_button: Button
 
+# "Back to Editor" button — only visible when testing a level from the editor
+var back_to_editor_button: Button
+
 # Syntax highlighter
 var syntax_highlighter: CodeHighlighter
 
@@ -103,9 +106,11 @@ var _rerun_after_variant: bool = false
 var _variant_intro_popup: AcceptDialog = null
 var _shown_variant_intro: bool = false
 
-# Interactive guided tutorial (offered once, the first time a level loads).
+# Interactive guided tutorial (offered once ever — the "seen" flag is persisted
+# to disk so it doesn't reappear on every level load or after a restart).
 var _tutorial_overlay: TutorialOverlay = null
 var _offered_tutorial: bool = false
+const SETTINGS_PATH := "user://ledibug_settings.cfg"
 
 # First-encounter hazard/lava explanations (each shown at most once per session).
 var _explained_hazard: bool = false
@@ -287,8 +292,8 @@ func _ready():
 		get_tree().root.remove_meta("selected_level")
 		load_level(selected_level)
 	else:
-		# Default to level 1
-		load_level(1)
+		# "Play" from the main menu — continue from the highest level reached.
+		load_level(clampi(PlayerProgress.highest_unlocked(), 1, level_definitions.get_level_count()))
 
 func _process(_delta: float) -> void:
 	if _split_locked:
@@ -376,6 +381,9 @@ func _load_custom_level(level_def: Dictionary):
 	# Custom levels have no "Next Level" — hide the button. A "Back to Levels"
 	# affordance lives in _on_next_level_button_pressed for non-builtin sources.
 	next_level_button.visible = false
+	# When testing a level straight from the editor, show a way back to it.
+	if back_to_editor_button:
+		back_to_editor_button.visible = (current_level_source == "test")
 
 	# Find or create GridManager
 	var level_node = get_node("HSplitContainer/GamePanel/GridBackground/Level")
@@ -659,9 +667,10 @@ func _show_variant_intro_if_needed() -> void:
 func _offer_tutorial_if_needed() -> void:
 	"""The first time a level loads, ask the player if they want a guided tour.
 	On "Yes", the overlay walks through each control one step at a time."""
-	if _offered_tutorial or not _tutorial_overlay:
+	if _offered_tutorial or not _tutorial_overlay or _tutorial_was_offered():
 		return
 	_offered_tutorial = true
+	_mark_tutorial_offered()
 	# Wait one frame so the layout is settled before measuring control rects.
 	await get_tree().process_frame
 	# A first-time "Multi-Variant Levels" dialog may pop on this same level load.
@@ -670,6 +679,20 @@ func _offer_tutorial_if_needed() -> void:
 	while is_instance_valid(_variant_intro_popup) and _variant_intro_popup.visible:
 		await _variant_intro_popup.visibility_changed
 	_tutorial_overlay.begin(_build_tutorial_steps())
+
+func _tutorial_was_offered() -> bool:
+	"""Has the player already been offered the tutorial (in any prior session)?"""
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) != OK:
+		return false
+	return cfg.get_value("tutorial", "offered", false)
+
+func _mark_tutorial_offered() -> void:
+	"""Remember that the tutorial has been offered, so it never pops up again."""
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_PATH)  # keep any existing settings; fine if the file is missing
+	cfg.set_value("tutorial", "offered", true)
+	cfg.save(SETTINGS_PATH)
 
 func _build_tutorial_steps() -> Array:
 	"""Define the ordered tour: each step spotlights one control with a tip."""
@@ -963,8 +986,11 @@ func _on_restart_button_pressed():
 		_load_custom_level(current_level_dict)
 
 func _on_next_level_button_pressed():
-	"""Load next level. For custom levels there's no 'next' — fall back to
-	the Custom Levels list instead of advancing past the end of builtins."""
+	"""Load next level. For custom levels there's no 'next' — fall back to the
+	Custom Levels list (or the editor, for a level being tested)."""
+	if current_level_source == "test":
+		_on_back_to_editor_pressed()
+		return
 	if current_level_source != "builtin":
 		get_tree().change_scene_to_file("res://scenes/ui/custom_levels.tscn")
 		return
@@ -979,6 +1005,14 @@ func _on_next_level_button_pressed():
 func _on_menu_button_pressed():
 	"""Return to main menu"""
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+func _on_back_to_editor_pressed():
+	"""Return to the level editor with the in-progress level restored exactly
+	as it was when the user pressed Test."""
+	if code_executor:
+		code_executor.stop_execution()
+	get_tree().root.set_meta("restore_editor_level", current_level_dict)
+	get_tree().change_scene_to_file("res://scenes/ui/level_editor.tscn")
 
 func _on_execution_error(error_msg: String):
 	"""Handle execution errors with proper formatting"""
@@ -996,6 +1030,9 @@ func _on_execution_error(error_msg: String):
 func _on_level_completed():
 	"""Called when player reaches goal"""
 	is_level_complete = true
+	# Record progress for built-in levels so the next one unlocks and "Play" resumes here.
+	if current_level_source == "builtin":
+		PlayerProgress.mark_solved(current_level_id)
 	Dbg.p("🎉 Level completed!")
 
 func _on_player_died():
@@ -1411,7 +1448,16 @@ func _setup_help_system():
 	
 	# Add to button container
 	button_container.add_child(theme_toggle_button)
-	
+
+	# "Back to Editor" — shown only when testing a level from the editor
+	# (see _load_custom_level). Returns to the editor with your work restored.
+	back_to_editor_button = Button.new()
+	back_to_editor_button.text = "← Back to Editor"
+	back_to_editor_button.custom_minimum_size = Vector2(140, 30)
+	back_to_editor_button.visible = false
+	back_to_editor_button.pressed.connect(_on_back_to_editor_pressed)
+	button_container.add_child(back_to_editor_button)
+
 	# Create popup panel
 	help_popup = PopupPanel.new()
 	help_popup.name = "HelpPopup"
