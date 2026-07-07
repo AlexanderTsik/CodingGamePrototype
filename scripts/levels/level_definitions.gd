@@ -336,10 +336,10 @@ With it: 7. See the pattern, loop it!"""
 		"layout": """##########
 ##########
 ##########
-####L#####
-####G#####
-####.#####
-####.#####
+##########
+####G.####
+####L.####
+####..####
 ####S#####
 ##########
 ##########""",
@@ -347,28 +347,28 @@ With it: 7. See the pattern, loop it!"""
 			"""##########
 ##########
 ##########
-####L#####
-####G#####
-####.#####
-####.#####
+##########
+####G.####
+####L.####
+####..####
 ####S#####
 ##########
 ##########""",
 			"""##########
 ##########
-####L#####
-####G#####
-####.#####
-####.#####
+##########
+####G.####
+####L.####
+####..####
 ####.#####
 ####.#####
 ####S#####
 ##########""",
 			"""##########
-####L#####
-####G#####
-####.#####
-####.#####
+##########
+####G.####
+####L.####
+####..####
 ####.#####
 ####.#####
 ####.#####
@@ -393,8 +393,15 @@ With it: 7. See the pattern, loop it!"""
 # as blocked — so trust them, not your step count!
 """,
 		"solution_code": """while (frontIsClear()) {
-    move()
-}
+       move()
+   }
+   turnRight()
+   move()
+   turnLeft()
+   move()
+   move()
+   turnLeft()
+   move()
 """,
 		"hint_text": """Level 6 — while + sensors
 
@@ -908,10 +915,10 @@ lines of code."""
 ##########
 ##########
 ######L###
-######G###
+######T###
 ######.###
 ##T###.###
-##.###T###
+##.###G###
 ##S#######
 ##########""",
 			"""##########
@@ -934,15 +941,23 @@ lines of code."""
 # every variant. You know what that means by now:
 #
 #   while (not goalReached()) {
-#       move()
-#   }
+#    move()
+#	if(not frontIsClear()){
+#		turnBack()
+#	}
+#}
+#
 #
 # Walk until you stand on the goal — the wormhole is
 # just part of the road.
 """,
 		"solution_code": """while (not goalReached()) {
     move()
+	if(not frontIsClear()){
+		turnBack()
+	}
 }
+
 """,
 		"hint_text": """Level 11 — teleporters
 
@@ -1481,42 +1496,42 @@ That's why parameters exist."""
 		"difficulty": 4,
 		"layout": """##########
 ##########
+##########
+##########
+##########
 ####L#####
-####G#####
-####D#####
-####.#####
-####K#####
+###K.DG###
 ####.#####
 ####S#####
 ##########""",
 		"variants": [
 			"""##########
 ##########
+##########
+##########
+##########
 ####L#####
-####G#####
-####D#####
-####.#####
-####K#####
+###K.DG###
 ####.#####
 ####S#####
 ##########""",
 			"""##########
+##########
+##########
+##########
 ####L#####
-####G#####
-####.#####
-####D#####
+###K.DG###
 ####.#####
 ####.#####
-####K#####
 ####S#####
 ##########""",
-			"""####L#####
-####G#####
+			"""##########
+##########
+##########
+####L#####
+###K.DG###
 ####.#####
-####D#####
 ####.#####
-####.#####
-####K#####
 ####.#####
 ####S#####
 ##########"""
@@ -1530,15 +1545,27 @@ That's why parameters exist."""
 # The key sits on the path BEFORE the door, so the loop
 # you already trust handles everything:
 #
-#   while (not goalReached()) {
+#   while (frontIsClear()) {
 #       move()
 #   }
+#   turnLeft()
+#   move()
+#   turnBack()
+#   move()
+#   move()
+#   move()
 #
 # (The corridor length changes per variant, of course.)
 """,
-		"solution_code": """while (not goalReached()) {
-    move()
-}
+		"solution_code": """   while (frontIsClear()) {
+       move()
+   }
+   turnLeft()
+   move()
+   turnBack()
+   move()
+   move()
+   move()
 """,
 		"hint_text": """Level 16 — keys and doors
 
@@ -1690,79 +1717,81 @@ the door, then walk to the goal."""
 	},
 
 	# ──────────────────────────────────────────────────────────────────────
-	# Level 18 — Double Lock (the one-step follower)
-	# Concept : Upgrade the corridor follower to take ONE action per loop
-	#           turn — it handles doors, keys and lava-lined bends in a
-	#           single unified loop.
-	# Grid    : Winding corridors with TWO key/door pairs; layout, bends
-	#           and key spots all change per variant.
+	# Level 18 — The Locked Gatekeeper
+	# Concept : The key is NOT on the direct path — you must consciously
+	#           detour into a dead-end branch to collect it, then return
+	#           to the main path. hasKey() is the only reliable way.
+	# Grid    : T-shaped corridor. The door blocks upward progress; the
+	#           key rests in a side branch at varying distances. Lava
+	#           caps the key's corridor so over-counting burns.
 	# ──────────────────────────────────────────────────────────────────────
 	{
 		"level_id": 18,
-		"level_name": "Double Lock",
-		"level_description": "Two keys, two doors, lava bends: one loop that senses before every single step.",
+		"level_name": "The Locked Gatekeeper",
+		"level_description": "The key hides in a dead-end branch. Detour, grab it, then backtrack through the door.",
 		"difficulty": 4,
 		"layout": """##########
 ##########
-#####L####
-#####..DGL
-##L##K####
-##..D.L###
-##K#######
-##.#######
-##S#######
+##########
+##G......#
+##..######
+##D#######
+##.K######
+##..######
+##S......#
 ##########""",
 		"variants": [
 			"""##########
 ##########
-#####L####
-#####..DGL
-##L##K####
-##..D.L###
-##K#######
-##.#######
-##S#######
+##########
+##G......#
+##..######
+##D#######
+##.K######
+##..######
+##S......#
 ##########""",
 			"""##########
 ##########
-##L#######
-##..D.GL##
-##K#######
-##.###L###
-#L.D.K.###
-######.###
-######S###
+##########
+##G......#
+##..######
+##D#######
+##...K####
+##..######
+##S......#
 ##########""",
-			"""#######L##
-#######G##
-#######D##
-###L###.##
-###..DK.L#
-###K######
-###.######
-###.######
-###S######
+			"""##########
+##########
+##########
+##..G....#
+##..######
+##..######
+##D#######
+##.K######
+##..######
+##S......#
 ##########"""
 		],
-		"starter_code": """# Two keys, two doors, and lava at every bend. The
-# corridor follower from level 10 turned only when a
-# whole straightaway ended. Here you want something even
-# more careful: sense BEFORE every single step.
+		"starter_code": """# The path ahead is blocked by a locked door. The key
+# isn't on the main road — it hides in a dead-end side
+# branch. You must navigate to the key, collect it, and
+# RETURN to the main path before the door will open.
 #
-#   while (not goalReached()) {
-#       if (frontIsClear()) {
-#           move()
-#       } elif (rightIsClear()) {
-#           turnRight()
-#       } else {
-#           turnLeft()
-#       }
+# hasKey() tells you when you're carrying a key.
+# Use it with while loops to fetch:
+#
+#   while (not hasKey()) {
+#       move()
 #   }
 #
-# One action per loop turn: step if you can, otherwise
-# turn toward an opening. Doors? A door with a key in
-# your pocket reads as CLEAR — the loop walks straight
-# through and opens it. No special code needed.
+# That loop walks until a key lands in your pocket —
+# no matter how far down the side branch it sits.
+# Then backtrack and the door ahead reads as clear.
+#
+# The side branch changes length in every variant,
+# so counting steps cannot work. Only hasKey() tells
+# you when to turn around.
 """,
 		"solution_code": """while (not goalReached()) {
     if (frontIsClear()) {
@@ -1774,10 +1803,17 @@ the door, then walk to the goal."""
     }
 }
 """,
-		"hint_text": """Level 18 — one step at a time
+		"hint_text": """Level 18 — fetch the key
 
-This loop makes exactly ONE decision per
-turn — the safest possible walker:
+A locked door blocks your path. Sensors
+report it as blocked because you have
+no key. The key waits in a side corridor
+at a depth that changes every variant.
+
+The one-step follower from level 10
+handles this automatically — it
+explores every branch, finds the key,
+and returns to the main path:
 
   while (not goalReached()) {
       if (frontIsClear()) {
@@ -1789,21 +1825,27 @@ turn — the safest possible walker:
       }
   }
 
-Why it beats hand-written turns here:
-  • Lava bends — sensed as blocked,
-    the loop turns instead of burning.
-  • Locked doors — read as blocked
-    while keyless, CLEAR once you hold
-    a key. The loop waits for no one:
-    key collected en route, door opened
-    on contact.
-  • Two key/door pairs, three variant
-    layouts — zero changes to the code.
+But there's a cleaner, more direct
+solution using hasKey():
+  while (not goalReached()) {
+      if (frontIsClear()) {
+          move()
+      } elif (not hasKey()) {
+          turnRight()
+          while (not hasKey()) { move() }
+          turnBack()
+      } else {
+          turnRight()
+      }
+  }
 
-Each key is placed before the door it
-opens, so the follower always arrives
-at a door already carrying what it
-needs. Design and code working together!"""
+This explicitly fetches the key when
+blocked, then uses it to open the
+door. Both programs work — which one
+do you understand better?
+
+Variant depths: 1, 2, or 4 cells into
+the side branch. hasKey() handles all."""
 	},
 
 	# ──────────────────────────────────────────────────────────────────────

@@ -59,6 +59,7 @@ func _ready() -> void:
 	# mouse until the tour is actually running (_active).
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	z_index = 10
 	set_process(false)
 	_build_confirm_dialog()
 	_build_card()
