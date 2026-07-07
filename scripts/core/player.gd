@@ -27,13 +27,20 @@ func _ready():
 	if grid_manager:
 		grid_position = Vector2i(position / grid_manager.tile_size)
 	_update_facing_rotation()
-	_play_sprite_animation()
+	_set_crawling(false)
 
 
-func _play_sprite_animation():
+func _set_crawling(active: bool) -> void:
+	"""Crawl animation runs only while the bug is actually moving; otherwise it
+	rests on a single static frame so it sits idle instead of animating forever."""
 	var animated_sprite := get_node_or_null("Sprite")
 	if animated_sprite is AnimatedSprite2D:
-		(animated_sprite as AnimatedSprite2D).play("crawl")
+		var anim := animated_sprite as AnimatedSprite2D
+		if active:
+			anim.play("crawl")
+		else:
+			anim.stop()
+			anim.frame = 0
 
 func _process(_delta: float):
 	if grid_manager and grid_manager.tile_size != _last_tile_size:
@@ -51,7 +58,7 @@ func reset_position():
 	move_count = 0
 	inventory.clear()
 	_update_facing_rotation()
-	_play_sprite_animation()
+	_set_crawling(false)
 
 func _sync_sprite_and_position():
 	"""Called whenever tile_size changes — rescale sprite and snap position."""
@@ -77,7 +84,6 @@ func turnRight():
 	var new_y = current_direction.x
 	current_direction = Vector2i(new_x, new_y)
 	_update_facing_rotation()
-	_play_sprite_animation()
 	Dbg.p("Turned right, now facing: %v" % current_direction)
 
 func turnLeft():
@@ -88,14 +94,12 @@ func turnLeft():
 	var new_y = -current_direction.x
 	current_direction = Vector2i(new_x, new_y)
 	_update_facing_rotation()
-	_play_sprite_animation()
 	Dbg.p("Turned left, now facing: %v" % current_direction)
 
 func turnBack():
 	"""Turn 180 degrees around"""
 	current_direction = -current_direction
 	_update_facing_rotation()
-	_play_sprite_animation()
 	Dbg.p("Turned around, now facing: %v" % current_direction)
 
 func _update_facing_rotation():
@@ -221,9 +225,11 @@ func _do_move(direction: Vector2i, duration: float) -> void:
 	if duration <= 0.0:
 		position = target_pos
 	else:
+		_set_crawling(true)
 		var tween := create_tween()
 		tween.tween_property(self, "position", target_pos, duration)
 		await tween.finished
+		_set_crawling(false)
 	movement_completed.emit()
 
 func _handle_teleporter():

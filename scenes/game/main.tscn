@@ -272,7 +272,6 @@ script = ExtResource("6_grid")
 [node name="Level" type="Node2D" parent="HSplitContainer/GamePanel/GridBackground"]
 
 [node name="Player" parent="HSplitContainer/GamePanel/GridBackground/Level" instance=ExtResource("2_sugp2")]
-z_index = 5
 position = Vector2(96, 96)
 rotation = -6.2831855
 
@@ -281,7 +280,6 @@ position = Vector2(0, 0)
 scale = Vector2(2, 2)
 sprite_frames = SubResource("SpriteFrames_ladybug")
 animation = &"crawl"
-autoplay = "crawl"
 
 [node name="HSplitContainer_GamePanel_SubViewportContainer_SubViewport_Level_Player#CollisionShape2D" type="CollisionShape2D" parent="HSplitContainer/GamePanel/GridBackground/Level/Player"]
 visible = false

@@ -16,7 +16,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="CodingGamePrototype"
 run/main_scene="res://scenes/ui/main_menu.tscn"
-config/features=PackedStringArray("4.7", "Forward Plus")
+config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://assets/icons/icon.svg"
 
 [autoload]
@@ -25,6 +25,7 @@ AuthManager="*res://scripts/network/auth_manager.gd"
 ApiClient="*res://scripts/network/api_client.gd"
 AuthBridge="*res://scripts/network/auth_bridge.gd"
 Dbg="*res://scripts/core/debug_log.gd"
+AudioController="*res://scripts/core/audio_controller.gd"
 
 [display]
 

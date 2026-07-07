@@ -13,6 +13,7 @@ var _panel: Panel
 var _stats: Label
 var _rank_label: Label
 var _lb_container: VBoxContainer
+var _sfx: AudioStreamPlayer   # celebration sound on level completion
 
 func _init(controller: Node = null) -> void:
 	_main = controller
@@ -50,6 +51,11 @@ func _build() -> void:
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical   = Control.GROW_DIRECTION_BOTH
 	_main.add_child(_panel)
+
+	# Celebration sound, played when the popup appears on a successful finish.
+	_sfx = AudioStreamPlayer.new()
+	_sfx.stream = load("res://assets/audio/level_complete.wav")
+	add_child(_sfx)
 
 	var margin = MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -150,6 +156,8 @@ func show_result() -> void:
 	_stats.text      = "%d moves  ·  %d lines of code" % [moves, lines]
 	_rank_label.text = ""
 	_panel.visible   = true
+	if _sfx and _sfx.stream:
+		_sfx.play()
 
 	# Relabel the "Next Level" button to reflect what it actually does.
 	var next_btn := _panel.find_child("WinNextButton", true, false) as Button
