@@ -1828,15 +1828,15 @@ and returns to the main path:
 But there's a cleaner, more direct
 solution using hasKey():
   while (not goalReached()) {
-      if (frontIsClear()) {
-          move()
-      } elif (not hasKey()) {
-          turnRight()
-          while (not hasKey()) { move() }
-          turnBack()
-      } else {
-          turnRight()
-      }
+	  if (frontIsClear()) {
+		  move()
+	  } elif (not hasKey()) {
+		  turnRight()
+		  while (not hasKey()) { move() }
+		  turnBack()
+	  } else {
+		  turnRight()
+	  }
   }
 
 This explicitly fetches the key when
@@ -1924,14 +1924,14 @@ the side branch. hasKey() handles all."""
 # Dead ends? It walks in, turns around, walks out.
 """,
 		"solution_code": """while (not goalReached()) {
-    if (rightIsClear()) {
-        turnRight()
-        move()
-    } elif (frontIsClear()) {
-        move()
-    } else {
-        turnLeft()
-    }
+	if (rightIsClear()) {
+		turnRight()
+		move()
+	} elif (frontIsClear()) {
+		move()
+	} else {
+		turnLeft()
+	}
 }
 """,
 		"hint_text": """Level 19 — the right-hand rule
@@ -1946,14 +1946,14 @@ possible action from this list:
   3. otherwise    turn left (in place)
 
   while (not goalReached()) {
-      if (rightIsClear()) {
-          turnRight()
-          move()
-      } elif (frontIsClear()) {
-          move()
-      } else {
-          turnLeft()
-      }
+	  if (rightIsClear()) {
+		  turnRight()
+		  move()
+	  } elif (frontIsClear()) {
+		  move()
+	  } else {
+		  turnLeft()
+	  }
   }
 
 Dead end? Rule 3 fires twice and you're
@@ -2065,26 +2065,26 @@ you built on level 19 already handles
 every mechanic in the game:
 
   🔥 LAVA — rightIsClear() and friends
-     report it as blocked, so the rule
-     hugs the safe corridor.
+	 report it as blocked, so the rule
+	 hugs the safe corridor.
   🔑 KEYS — picked up by walking, and
-     the vaults place each key on the
-     path before its door.
+	 the vaults place each key on the
+	 path before its door.
   🚪 DOORS — read as walls until you
-     hold a key, then as open corridor.
-     The rule opens them in stride.
+	 hold a key, then as open corridor.
+	 The rule opens them in stride.
   ↩ DEAD ENDS — entered, reversed,
-     exited. No extra code.
+	 exited. No extra code.
 
   while (not goalReached()) {
-      if (rightIsClear()) {
-          turnRight()
-          move()
-      } elif (frontIsClear()) {
-          move()
-      } else {
-          turnLeft()
-      }
+	  if (rightIsClear()) {
+		  turnRight()
+		  move()
+	  } elif (frontIsClear()) {
+		  move()
+	  } else {
+		  turnLeft()
+	  }
   }
 
 What you learned on the way here:
