@@ -1733,44 +1733,43 @@ the door, then walk to the goal."""
 		"layout": """##########
 ##########
 ##########
-##G......#
-##..######
-##D#######
-##.K######
-##..######
-##S......#
+##T...DG##
+##########
+##########
+######K###
+##S....T##
+######L###
 ##########""",
 		"variants": [
 			"""##########
 ##########
 ##########
-##G......#
-##..######
-##D#######
-##.K######
-##..######
-##S......#
+##T...DG##
+##########
+##########
+######K###
+##S....T##
+######L###
 ##########""",
 			"""##########
 ##########
 ##########
-##G......#
-##..######
-##D#######
-##...K####
-##..######
-##S......#
+##T...DG##
+##########
+##########
+#####L####
+##S....T##
+#####K####
 ##########""",
 			"""##########
 ##########
 ##########
-##..G....#
-##..######
-##..######
-##D#######
-##.K######
-##..######
-##S......#
+#T.D....G#
+##########
+##########
+######L###
+#S......T#
+######K###
 ##########"""
 		],
 		"starter_code": """# The path ahead is blocked by a locked door. The key
@@ -1793,59 +1792,26 @@ the door, then walk to the goal."""
 # so counting steps cannot work. Only hasKey() tells
 # you when to turn around.
 """,
-		"solution_code": """while (not goalReached()) {
-    if (frontIsClear()) {
-        move()
-    } elif (rightIsClear()) {
-        turnRight()
-    } else {
-        turnLeft()
-    }
+		"solution_code": """turnRight()
+while(frontIsClear()){
+	move()
+	if(leftIsClear()){
+		turnLeft()
+		move()
+		turnBack()
+		move()
+		turnLeft()
+	}
+	if(rightIsClear()){
+		turnRight()
+		move()
+		turnBack()
+		move()
+		turnRight()
+	}
 }
 """,
-		"hint_text": """Level 18 — fetch the key
-
-A locked door blocks your path. Sensors
-report it as blocked because you have
-no key. The key waits in a side corridor
-at a depth that changes every variant.
-
-The one-step follower from level 10
-handles this automatically — it
-explores every branch, finds the key,
-and returns to the main path:
-
-  while (not goalReached()) {
-      if (frontIsClear()) {
-          move()
-      } elif (rightIsClear()) {
-          turnRight()
-      } else {
-          turnLeft()
-      }
-  }
-
-But there's a cleaner, more direct
-solution using hasKey():
-  while (not goalReached()) {
-	  if (frontIsClear()) {
-		  move()
-	  } elif (not hasKey()) {
-		  turnRight()
-		  while (not hasKey()) { move() }
-		  turnBack()
-	  } else {
-		  turnRight()
-	  }
-  }
-
-This explicitly fetches the key when
-blocked, then uses it to open the
-door. Both programs work — which one
-do you understand better?
-
-Variant depths: 1, 2, or 4 cells into
-the side branch. hasKey() handles all."""
+		"hint_text": """No hints from level 18. You can do this on your own!"""
 	},
 
 	# ──────────────────────────────────────────────────────────────────────
@@ -1857,50 +1823,51 @@ the side branch. hasKey() handles all."""
 	# ──────────────────────────────────────────────────────────────────────
 	{
 		"level_id": 19,
-		"level_name": "The Right Wall",
+		"level_name": "Going in circles",
 		"level_description": "Learn the right-hand rule: prefer right, else straight, else turn left — it solves ANY maze.",
 		"difficulty": 5,
-		"layout": """##########
-#....#..G#
-#.##.#.###
-#.##.#.###
-#.##...###
-#.########
-#.########
-#.########
-#S########
+		"layout": """#S########
+#.#.....##
+#.#.###.##
+#.#.#G#.##
+#.#.#.#.##
+#.#.#.#.##
+#.#...#.##
+#.#####.##
+#.......##
 ##########""",
 		"variants": [
-			"""##########
-#....#..G#
-#.##.#.###
-#.##.#.###
-#.##...###
-#.########
-#.########
-#.########
-#S########
+			"""#S########
+#.#.....##
+#.#.###.##
+#.#.#G#.##
+#.#.#.#.##
+#.#.#.#.##
+#.#...#.##
+#.#####.##
+#.......##
 ##########""",
-			"""##########
-##G..#####
-##.#.#####
-##.#.#####
-##.#..####
-##.##.####
-##....####
-##.#######
-#S.#######
-##########""",
-			"""##########
-#######G##
-#######.##
-###.....##
-###.##.###
-###.##.###
-#......###
-#.########
-#S########
-##########"""
+			"""########
+#S######
+#.#...##
+#.#.#.##
+#.#G#.##
+#.###.##
+#.....##
+########""",
+			"""############
+#S##########
+#.#........#
+#.#.######.#
+#.#.#....#.#
+#.#.#.##.#.#
+#.#.#.##.#.#
+#.#.#.G#.#.#
+#.#.####.#.#
+#.#......#.#
+#.########.#
+#..........#
+############"""
 		],
 		"starter_code": """# Real mazes now: junctions where BOTH ways are open,
 # and dead-end corridors that go nowhere. A follower
@@ -1934,40 +1901,7 @@ the side branch. hasKey() handles all."""
 	}
 }
 """,
-		"hint_text": """Level 19 — the right-hand rule
-
-Imagine dragging your right hand along
-the maze wall and never lifting it.
-In code, every loop turn does the FIRST
-possible action from this list:
-
-  1. right open?  turn right AND step
-  2. front open?  step
-  3. otherwise    turn left (in place)
-
-  while (not goalReached()) {
-	  if (rightIsClear()) {
-		  turnRight()
-		  move()
-	  } elif (frontIsClear()) {
-		  move()
-	  } else {
-		  turnLeft()
-	  }
-  }
-
-Dead end? Rule 3 fires twice and you're
-walking back out. Junction? Rule 1
-keeps your hand glued to the right wall.
-
-This solves ANY maze whose walls are
-connected to the outside — all three
-variants included. Watch it explore a
-dead end and calmly back out: no special
-case in the code handles that. It simply
-EMERGES from three honest rules.
-
-That is what algorithms are."""
+		"hint_text": """No hints from level 18. You can do this on your own!"""
 	},
 
 	# ──────────────────────────────────────────────────────────────────────
@@ -1981,47 +1915,45 @@ That is what algorithms are."""
 		"level_description": "The final exam: lava labyrinths, two locked doors, dead-end traps — one algorithm to rule them all.",
 		"difficulty": 5,
 		"layout": """############
-#####..DGL##
-#####KLL####
-##L##.L#####
-##..D.L#####
-##KLLL######
-##...#######
-##.#########
-##S#########
+############
+############
+#S########T#
+#......L##.#
+#.##.#####.#
+#.##D#####.#
+#T##G#####K#
+############
 ############""",
 		"variants": [
 			"""############
-#####..DGL##
-#####KLL####
-##L##.L#####
-##..D.L#####
-##KLLL######
-##...#######
-##.#########
-##S#########
+############
+############
+#S########T#
+#......L##.#
+#.##.#####.#
+#.##D#####.#
+#T##G#####K#
+############
 ############""",
-			"""##L#######
-##G#######
-##D#######
-##.#######
-##.#####L#
-##..K.D..#
-########K#
-########.#
-########S#
-##########""",
-			"""#########L##
-#########G##
-#########.##
-#########D##
-#########.##
-##L######.##
-##..D...K.L#
-##K###.#####
-##.###.#####
-##.#########
-##S#########
+			"""############
+############
+############
+#S########T#
+#......T##.#
+#.##.#####.#
+#.##D#####.#
+#L##G#####K#
+####L#######
+############""",
+			"""############
+############
+############
+#S########T#
+#......T##.#
+#.##.#####.#
+#.##D#####.#
+#L##.G####K#
+####L#######
 ############"""
 		],
 		"starter_code": """# THE GRAND VAULT — everything you've learned, at once:
